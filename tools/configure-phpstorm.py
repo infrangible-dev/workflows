@@ -8,6 +8,8 @@
       inspection_tool element replaces the one of the same class
     - project-resources.xml: XML schema catalog for urn:magento:... (component ProjectResources in .idea/misc.xml)
     - module-folders.xml: folders that are indexed or excluded (.idea/<module>.iml)
+    - stubs: declarations for PhpStorm only, added as include path (.idea/php.xml), relative to the module, so the
+      workflows repository has to be next to the modules
 
 Modules without a .idea folder are skipped; PhpStorm creates it when the module is opened for the first time, so run
 the script again afterwards. PhpStorm reloads changed project files; if a module is open, check that the settings are
@@ -35,6 +37,13 @@ EMPTY_PROFILE = """<component name="InspectionProjectProfileManager">
 </component>
 """
 
+
+STUBS_INCLUDE_PATH = "$PROJECT_DIR$/../workflows/templates/phpstorm/stubs"
+
+EMPTY_PHP = """<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+</project>
+"""
 
 EMPTY_MISC = """<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
@@ -104,6 +113,22 @@ def apply_folders(iml: str, index: list[str], exclude: list[str]) -> str:
     return iml
 
 
+def apply_include_path(php: str, path: str) -> str:
+    element = f'<path value="{path}" />'
+    if element in php:
+        return php
+    manager = re.search(r'([ \t]*)<component name="PhpIncludePathManager">\s*<include_path>\n', php)
+    if manager:
+        indent = manager.group(1)
+        return php[:manager.end()] + f"{indent}    {element}\n" + php[manager.end():]
+    empty = re.search(r'[ \t]*<component name="PhpIncludePathManager"\s*/>\n', php)
+    block = (f'  <component name="PhpIncludePathManager">\n    <include_path>\n      {element}\n'
+             f'    </include_path>\n  </component>\n')
+    if empty:
+        return php[:empty.start()] + block + php[empty.end():]
+    return php.replace("</project>", block + "</project>", 1)
+
+
 def apply_inspections(profile: str, tools: list[tuple[str, str]]) -> str:
     for tool_class, element in tools:
         pattern = re.compile(
@@ -157,6 +182,7 @@ def main() -> int:
             idea / "inspectionProfiles" / "Project_Default.xml": lambda s: apply_inspections(s or EMPTY_PROFILE, tools),
             idea / "inspectionProfiles" / "profiles_settings.xml": lambda s: settings,
             idea / "misc.xml": lambda s: apply_resources(s or EMPTY_MISC, resources),
+            idea / "php.xml": lambda s: apply_include_path(s or EMPTY_PHP, STUBS_INCLUDE_PATH),
         }
         for iml in sorted(idea.glob("*.iml")):
             files[iml] = lambda s: apply_folders(s, index, exclude)

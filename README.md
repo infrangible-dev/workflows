@@ -140,6 +140,7 @@ tools/add-return-tags.py ../m2-core/src
 |                          | and the IDE profile (`--ide-profile`)              |                                             |
 | `project-resources.xml`  | `.idea/misc.xml` (component `ProjectResources`)    | catalog of the `urn:magento:...` schemas    |
 | `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude                 |
+| `stubs/`                 | include path in `.idea/php.xml`                    | classes for PhpStorm only (see below)       |
 
 ```bash
 tools/configure-phpstorm.py ../m2-*            # apply the settings to all modules with a .idea folder
@@ -155,5 +156,10 @@ settings into it as well, close PhpStorm (it saves IDE profiles itself) and run:
 ```bash
 tools/configure-phpstorm.py --ide-profile /mnt/c/Users/<user>/AppData/Roaming/JetBrains/PhpStorm<version>/inspection/Magento.xml ../m2-*
 ```
+
+`stubs/` declares classes that the tests use, but that the PHPUnit of the development environment may not have, for
+example attributes of PHPUnit 12. PhpStorm finds them through the include path
+`$PROJECT_DIR$/../workflows/templates/phpstorm/stubs`, so this repository has to be checked out next to the modules.
+The file is never loaded by PHP.
 
 To change an inspection for all modules, add it to `inspections.xml` with a comment why, and run the script.
