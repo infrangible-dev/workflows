@@ -135,6 +135,16 @@ jobs:
           workflows/tools/check-composer-requirements.sh \
             "${RUNNER_TEMP}/composer-require-checker/bin/composer-require-checker" module
 
+      - name: Dead code
+        if: matrix.phpcs
+        # reported as warning until the Magento usage provider has been used with more modules
+        continue-on-error: true
+        run: |
+          # the dead code detector needs PHPStan 2, Magento comes with PHPStan 1
+          composer require --no-interaction --no-progress --working-dir "${RUNNER_TEMP}/dead-code" \
+            "phpstan/phpstan:^2.1.41" shipmonk/dead-code-detector
+          workflows/tools/check-dead-code.sh "${RUNNER_TEMP}/dead-code" module "${MAGENTO_ROOT}"
+
   release:
     name: Release
     needs: checks
