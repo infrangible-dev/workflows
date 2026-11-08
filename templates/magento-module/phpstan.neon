@@ -9,6 +9,18 @@ parameters:
     bootstrapFiles:
         # generates factories and extension attributes on the fly, as in Magento's own static tests
         - phpstan.bootstrap.php
+    # @throws tags as PhpStorm expects them: every checked exception that a method lets through has to be declared,
+    # and not more than that; unchecked are the same exceptions as in the PhpStorm settings of the modules
+    exceptions:
+        check:
+            missingCheckedExceptionInThrows: true
+            tooWideThrowType: true
+        uncheckedExceptionClasses:
+            - Error
+            - LogicException
+            - RuntimeException
+            # PHPUnit declares interfaces like PHPUnit\Framework\MockObject\Exception in @throws of createMock()
+            - PHPUnit\Exception
     ignoreErrors:
         # the tests use attributes of newer PHPUnit versions (DataProvider: 10+, AllowMockObjectsWithoutExpectations:
         # 12.5+), which older versions ignore; Magento 2.4.6 comes with PHPUnit 9

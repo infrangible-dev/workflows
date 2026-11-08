@@ -83,7 +83,7 @@ configuration have to load the Magento installation from `MAGENTO_ROOT` (see `ph
 | File                       | Purpose                                                                  |
 |----------------------------|--------------------------------------------------------------------------|
 | `phpcs.xml`                | Magento2 coding standard and PHP 8.2 compatibility for `src`             |
-| `phpstan.neon`             | PHPStan level 9 for `src`                                                |
+| `phpstan.neon`             | PHPStan level 9 for `src`, including missing or too wide `@throws` tags  |
 | `phpstan.bootstrap.php`    | loads the PHPStan autoloader of Magento from `MAGENTO_ROOT`              |
 | `phpunit.xml`              | unit tests in `src/Test/Unit`                                            |
 | `phpunit.bootstrap.php`    | loads the bootstrap of the Magento unit tests from `MAGENTO_ROOT`        |
