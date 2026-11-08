@@ -20,7 +20,10 @@ On every push and pull request, for each combination of the matrix:
 1. A Magento project of the newest patch release of the version is created with Composer from the
    [Mage-OS mirror](https://mirror.mage-os.org/), so no access keys for repo.magento.com are needed, and the module is
    installed into it.
-2. PHPCS with the `phpcs.xml` of the module (only with the newest Magento version).
+2. PHPCS with the `phpcs.xml` of the module and checks of conventions the tools cannot express, both only with the
+   newest Magento version:
+   - no `mixed[]` in docblocks: PhpStorm reports it as replaceable with `array`, PHPStan level 9 needs the value
+     type, so use `@param array $x` together with `@phpstan-param array<string, mixed> $x`
 3. PHPStan with the `phpstan.neon` of the module.
 4. PHPUnit with the `phpunit.xml` of the module.
 

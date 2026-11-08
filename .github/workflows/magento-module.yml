@@ -99,6 +99,16 @@ jobs:
         working-directory: module
         run: "${MAGENTO_ROOT}/vendor/bin/phpcs"
 
+      - name: Docblock conventions
+        if: matrix.phpcs
+        working-directory: module
+        run: |
+          # PhpStorm reports "mixed[]" as replaceable with "array", PHPStan needs the value type: use both notations
+          if grep -rnE --include='*.php' --include='*.phtml' 'mixed\[\]' src; then
+            echo "::error::Use '@param array \$x' with '@phpstan-param array<string, mixed> \$x' instead of 'mixed[]'"
+            exit 1
+          fi
+
       - name: Static analysis
         working-directory: module
         run: "${MAGENTO_ROOT}/vendor/bin/phpstan analyse -c phpstan.neon --no-progress --memory-limit=2G"
