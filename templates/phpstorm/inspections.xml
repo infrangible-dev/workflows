@@ -10,4 +10,10 @@
      * and missing titles of own resources are reported by Magento when the merged ACL is validated.
     -->
     <inspection_tool class="AclResourceXmlInspection" enabled="false" level="ERROR" enabled_by_default="false" />
+    <!--
+     * Magento's vendor directory contains copies of classes inside tools, for example Composer\InstalledVersions in
+     * vendor/composer, in the Composer library and in Rector (required by the Magento coding standard). PhpStorm's
+     * Composer synchronization adds all of them as include paths, so the warning cannot be avoided by excluding folders.
+    -->
+    <inspection_tool class="PhpMultipleClassDeclarationsInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
 </inspections>
