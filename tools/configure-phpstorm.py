@@ -18,7 +18,8 @@ Usage: configure-phpstorm.py [--check] [--ide-profile <file>] <module directory>
     --check                 only report modules whose settings differ, exit with 1 if any differs
     --ide-profile <file>    also write the inspection settings into this IDE profile, for example
                             /mnt/c/Users/<user>/AppData/Roaming/JetBrains/PhpStorm<version>/inspection/Magento.xml;
-                            PhpStorm saves IDE profiles itself, so close it before using this option
+                            PhpStorm saves IDE profiles itself, so close it before using this option; a missing
+                            file is created with the name of the file as profile name
 """
 
 import re
@@ -174,9 +175,12 @@ def main() -> int:
     if ide_profile is not None:
         current, line_ending = read_file(ide_profile)
         if not current:
-            print(f"IDE profile not found: {ide_profile} (PhpStorm writes it when the settings are saved)")
-            return 1
-        updated = apply_inspections(current, tools)
+            # PhpStorm only writes a profile that differs from its defaults; a new file needs the name only
+            line_ending = "\r\n" if str(ide_profile).startswith("/mnt/") else "\n"
+            base = f'<profile version="1.0">\n  <option name="myName" value="{ide_profile.stem}" />\n</profile>\n'
+        else:
+            base = current
+        updated = apply_inspections(base, tools)
         if updated != current:
             if check:
                 print(f"Outdated: {ide_profile}")
