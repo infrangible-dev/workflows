@@ -110,6 +110,15 @@ tools/add-property-types.py ../m2-core/src
 
 Typing `protected` properties is a breaking change for classes that extend them, so it belongs in a major version.
 
+`tools/add-return-tags.py` adds missing `@return` tags to method docblocks, taken from the native return type, as the
+PhpStorm default inspection "Missing @return tag" expects. Constructors, docblocks with `{@inheritDoc}` and methods
+without native return type are skipped (the latter are listed).
+
+```bash
+tools/add-return-tags.py --dry-run ../m2-core/src
+tools/add-return-tags.py ../m2-core/src
+```
+
 ## PhpStorm settings
 
 `templates/phpstorm` contains PhpStorm settings for every module, which `tools/configure-phpstorm.py` writes into the
@@ -117,7 +126,9 @@ Typing `protected` properties is a breaking change for classes that extend them,
 
 | File                     | Written to                                         | Purpose                                     |
 |--------------------------|----------------------------------------------------|---------------------------------------------|
+| `profiles_settings.xml`  | `.idea/inspectionProfiles/profiles_settings.xml`   | all modules use the IDE profile "Magento"   |
 | `inspections.xml`        | `.idea/inspectionProfiles/Project_Default.xml`     | inspections that are changed, with reasons  |
+|                          | and the IDE profile (`--ide-profile`)              |                                             |
 | `project-resources.xml`  | `.idea/misc.xml` (component `ProjectResources`)    | catalog of the `urn:magento:...` schemas    |
 | `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude                 |
 
@@ -128,5 +139,12 @@ tools/configure-phpstorm.py --check ../m2-*    # only list modules with differen
 
 Only the listed inspections, folders and the schema catalog are changed, and the line endings of the files are kept; all other settings of the profile stay as they are.
 PhpStorm creates `.idea` when a module is opened for the first time, so run the script again for new modules.
+
+The modules use the IDE profile "Magento", a copy of the PhpStorm default inspections. To write the inspection
+settings into it as well, close PhpStorm (it saves IDE profiles itself) and run:
+
+```bash
+tools/configure-phpstorm.py --ide-profile /mnt/c/Users/<user>/AppData/Roaming/JetBrains/PhpStorm<version>/inspection/Magento.xml ../m2-*
+```
 
 To change an inspection for all modules, add it to `inspections.xml` with a comment why, and run the script.

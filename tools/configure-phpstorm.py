@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Applies the shared PhpStorm settings (templates/phpstorm) to the .idea folders of Magento modules.
 
-    - inspections.xml: inspection settings of the "Project Default" profile
-      (.idea/inspectionProfiles/Project_Default.xml); each inspection_tool element replaces the one of the same class
+    - profiles_settings.xml: the inspection profile of the modules (.idea/inspectionProfiles/profiles_settings.xml),
+      the IDE profile "Magento", shared by all modules
+    - inspections.xml: inspection settings, written into the "Project Default" profile of every module
+      (.idea/inspectionProfiles/Project_Default.xml) and, with --ide-profile, into the IDE profile; each
+      inspection_tool element replaces the one of the same class
     - project-resources.xml: XML schema catalog for urn:magento:... (component ProjectResources in .idea/misc.xml)
     - module-folders.xml: folders that are indexed or excluded (.idea/<module>.iml)
 
@@ -10,9 +13,12 @@ Modules without a .idea folder are skipped; PhpStorm creates it when the module 
 the script again afterwards. PhpStorm reloads changed project files; if a module is open, check that the settings are
 applied (or close the project before running the script).
 
-Usage: configure-phpstorm.py [--check] <module directory> [<module directory> ...]
+Usage: configure-phpstorm.py [--check] [--ide-profile <file>] <module directory> [<module directory> ...]
 
-    --check   only report modules whose settings differ, exit with 1 if any differs
+    --check                 only report modules whose settings differ, exit with 1 if any differs
+    --ide-profile <file>    also write the inspection settings into this IDE profile, for example
+                            /mnt/c/Users/<user>/AppData/Roaming/JetBrains/PhpStorm<version>/inspection/Magento.xml;
+                            PhpStorm saves IDE profiles itself, so close it before using this option
 """
 
 import re
@@ -28,13 +34,6 @@ EMPTY_PROFILE = """<component name="InspectionProjectProfileManager">
 </component>
 """
 
-EMPTY_PROFILE_SETTINGS = """<component name="InspectionProjectProfileManager">
-  <settings>
-    <option name="USE_PROJECT_PROFILE" value="true" />
-    <version value="1.0" />
-  </settings>
-</component>
-"""
 
 EMPTY_MISC = """<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
@@ -66,6 +65,10 @@ def inspection_tools() -> list[tuple[str, str]]:
         element = match.group(0)
         tools.append((re.search(r'class="([^"]+)"', element).group(1), element))
     return tools
+
+
+def profile_settings() -> str:
+    return (TEMPLATE_PATH / "profiles_settings.xml").read_text(encoding="utf-8")
 
 
 def project_resources() -> str:
@@ -106,11 +109,14 @@ def apply_inspections(profile: str, tools: list[tuple[str, str]]) -> str:
             r'[ \t]*<inspection_tool class="' + re.escape(tool_class) + r'"[^>]*?(?:/>|>.*?</inspection_tool>)\n?',
             re.S,
         )
-        line = "    " + element + "\n"
+        # project profiles are nested in a component (indent 4), IDE profiles are not (indent 2)
+        closing = re.search(r"^([ \t]*)</profile>", profile, re.M)
+        indent = (closing.group(1) if closing else "") + "  "
+        line = indent + element + "\n"
         if pattern.search(profile):
             profile = pattern.sub(lambda m: line, profile, count=1)
-        else:
-            profile = profile.replace("  </profile>", line + "  </profile>", 1)
+        elif closing:
+            profile = profile[:closing.start()] + line + profile[closing.start():]
     return profile
 
 
@@ -124,12 +130,18 @@ def apply_resources(misc: str, resources: str) -> str:
 def main() -> int:
     args = sys.argv[1:]
     check = "--check" in args
+    ide_profile = None
+    if "--ide-profile" in args:
+        position = args.index("--ide-profile")
+        ide_profile = Path(args[position + 1])
+        del args[position:position + 2]
     directories = [Path(a) for a in args if a != "--check"]
     if not directories:
         print(__doc__)
         return 1
 
     tools = inspection_tools()
+    settings = profile_settings()
     resources = project_resources()
     index, exclude = module_folders()
     outdated = False
@@ -142,7 +154,7 @@ def main() -> int:
 
         files = {
             idea / "inspectionProfiles" / "Project_Default.xml": lambda s: apply_inspections(s or EMPTY_PROFILE, tools),
-            idea / "inspectionProfiles" / "profiles_settings.xml": lambda s: s or EMPTY_PROFILE_SETTINGS,
+            idea / "inspectionProfiles" / "profiles_settings.xml": lambda s: settings,
             idea / "misc.xml": lambda s: apply_resources(s or EMPTY_MISC, resources),
         }
         for iml in sorted(idea.glob("*.iml")):
@@ -158,6 +170,20 @@ def main() -> int:
             else:
                 write_file(path, updated, line_ending)
                 print(f"{'Updated' if current else 'Added'}: {path}")
+
+    if ide_profile is not None:
+        current, line_ending = read_file(ide_profile)
+        if not current:
+            print(f"IDE profile not found: {ide_profile} (PhpStorm writes it when the settings are saved)")
+            return 1
+        updated = apply_inspections(current, tools)
+        if updated != current:
+            if check:
+                print(f"Outdated: {ide_profile}")
+                outdated = True
+            else:
+                write_file(ide_profile, updated, line_ending)
+                print(f"Updated: {ide_profile}")
 
     return 1 if check and outdated else 0
 
