@@ -117,6 +117,24 @@ jobs:
         working-directory: module
         run: "${MAGENTO_ROOT}/vendor/bin/phpunit -c phpunit.xml"
 
+      - name: Check out shared tools
+        if: matrix.phpcs
+        uses: actions/checkout@v4
+        with:
+          repository: infrangible-dev/workflows
+          path: workflows
+
+      - name: Dependencies in composer.json
+        if: matrix.phpcs
+        run: |
+          composer create-project --no-interaction --no-progress --no-dev \
+            maglnet/composer-require-checker "${RUNNER_TEMP}/composer-require-checker"
+          # the checker looks for the dependencies in the vendor directory of the module; run as last step, because
+          # PHPStan must not find a vendor directory in the module
+          ln -s "${MAGENTO_ROOT}/vendor" module/vendor
+          workflows/tools/check-composer-requirements.sh \
+            "${RUNNER_TEMP}/composer-require-checker/bin/composer-require-checker" module
+
   release:
     name: Release
     needs: checks
