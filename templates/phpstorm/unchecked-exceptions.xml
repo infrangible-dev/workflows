@@ -11,7 +11,12 @@
     <fqn value="\RuntimeException" />
     <!--
      * PHPUnit declares interfaces like PHPUnit\Framework\MockObject\Exception in @throws of createMock(), so every test
-     * would have to list them, although they only signal broken tests.
+     * would have to list them, although they only signal broken tests. PhpStorm does not follow the interface
+     * hierarchy, so every interface is listed, not only their base interface PHPUnit\Exception.
     -->
     <fqn value="\PHPUnit\Exception" />
+    <fqn value="\PHPUnit\Framework\MockObject\Exception" />
+    <fqn value="\PHPUnit\Framework\SkippedTest" />
+    <fqn value="\PHPUnit\Runner\Exception" />
+    <fqn value="\PHPUnit\Util\Exception" />
 </unchecked_exceptions>
