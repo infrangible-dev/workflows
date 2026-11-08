@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Inspection settings that tools/configure-phpstorm.py writes into the "Project Default" profile of every module
+ * (.idea/inspectionProfiles/Project_Default.xml). Each inspection_tool element replaces the one of the same class.
+-->
+<inspections>
+    <!--
+     * Magento plugin: requires a title on every resource in etc/acl.xml, also on <resource id="Magento_Backend::admin">,
+     * which only references the root resource of Magento_Backend. Magento itself (acl.xsd) does not require it there,
+     * and missing titles of own resources are reported by Magento when the merged ACL is validated.
+    -->
+    <inspection_tool class="AclResourceXmlInspection" enabled="false" level="ERROR" enabled_by_default="false" />
+</inspections>
