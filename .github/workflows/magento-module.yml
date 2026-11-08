@@ -1,0 +1,168 @@
+# Checks a Magento 2 module against several Magento and PHP versions and releases it when the checks pass.
+#
+# Checks (on every push and pull request):
+#   - coding standard (PHPCS with the phpcs.xml of the module), with the newest Magento version
+#   - static analysis (PHPStan with the phpstan.neon of the module), with every Magento version
+#   - unit tests (PHPUnit with the phpunit.xml of the module), with every Magento version
+#
+# Release (on a push to the default branch, only if all checks passed):
+#   - takes the version from composer.json of the module
+#   - does nothing if a tag for this version already exists
+#   - creates the tag and a GitHub release with the section of CHANGELOG.md for this version
+#   - Packagist picks up the new tag through the GitHub webhook of the repository
+#
+# The Magento code comes from the Mage-OS mirror, so no access keys for repo.magento.com are needed.
+#
+# Usage in a module repository (.github/workflows/ci.yml):
+#
+#   name: CI
+#   on:
+#     push:
+#       branches: [main]
+#     pull_request:
+#   permissions:
+#     contents: write
+#   jobs:
+#     module:
+#       uses: infrangible-dev/workflows/.github/workflows/magento-module.yml@main
+
+name: Magento module
+
+on:
+  workflow_call:
+    inputs:
+      matrix:
+        description: JSON list of Magento and PHP versions; the entry with "phpcs" set also runs the coding standard
+        type: string
+        default: >-
+          [
+            {"magento": "2.4.6.*", "php": "8.2"},
+            {"magento": "2.4.7.*", "php": "8.3"},
+            {"magento": "2.4.8.*", "php": "8.4"},
+            {"magento": "2.4.9.*", "php": "8.5", "phpcs": true}
+          ]
+      mirror:
+        description: Composer repository with the Magento packages
+        type: string
+        default: https://mirror.mage-os.org/
+
+jobs:
+  checks:
+    name: Magento ${{ matrix.magento }} / PHP ${{ matrix.php }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.matrix) }}
+    env:
+      MAGENTO_ROOT: ${{ github.workspace }}/magento
+    steps:
+      - name: Check out module
+        uses: actions/checkout@v4
+        with:
+          path: module
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: bcmath, ctype, curl, dom, ftp, gd, hash, iconv, intl, mbstring, openssl, pdo_mysql, simplexml, soap, sockets, sodium, xsl, zip
+          ini-values: memory_limit=-1
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ matrix.magento }}-${{ matrix.php }}-${{ hashFiles('module/composer.json') }}
+          restore-keys: composer-${{ matrix.magento }}-${{ matrix.php }}-
+
+      - name: Create Magento project
+        run: |
+          composer create-project --no-install --no-interaction \
+            --repository-url="${{ inputs.mirror }}" \
+            "magento/project-community-edition:${{ matrix.magento }}" magento
+          cd magento
+          # the project points to repo.magento.com, which needs access keys
+          composer config repositories.0 composer "${{ inputs.mirror }}"
+          # older Magento releases depend on packages with security advisories (for example league/flysystem 2 in
+          # 2.4.6), which Composer refuses to install; this installation is only used for the checks
+          composer config policy.advisories.block false
+          composer config repositories.module '{"type": "path", "url": "../module", "options": {"symlink": false}}'
+          composer require --no-update "$(jq -r .name ../module/composer.json):*@dev"
+          composer install --no-interaction --no-progress
+          echo "Magento: $(composer show magento/product-community-edition --format=json | jq -r '.versions[0]')"
+
+      - name: Coding standard
+        if: matrix.phpcs
+        working-directory: module
+        run: "${MAGENTO_ROOT}/vendor/bin/phpcs"
+
+      - name: Static analysis
+        working-directory: module
+        run: "${MAGENTO_ROOT}/vendor/bin/phpstan analyse -c phpstan.neon --no-progress --memory-limit=2G"
+
+      - name: Unit tests
+        working-directory: module
+        run: "${MAGENTO_ROOT}/vendor/bin/phpunit -c phpunit.xml"
+
+  release:
+    name: Release
+    needs: checks
+    if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    concurrency:
+      group: release-${{ github.repository }}
+    steps:
+      - name: Check out module
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Release version from composer.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -r '.version // empty' composer.json)
+          if [[ -z "${version}" ]]; then
+            echo "::notice::No version in composer.json, nothing to release"
+            exit 0
+          fi
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version ${version} in composer.json is no plain semantic version (major.minor.patch)"
+            exit 1
+          fi
+          if git rev-parse --quiet --verify "refs/tags/${version}" >/dev/null; then
+            echo "::notice::Version ${version} is already released"
+            exit 0
+          fi
+
+          latestVersion=$(git tag -l | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          if [[ -n "${latestVersion}" ]] && [[ $(printf '%s\n%s\n' "${latestVersion}" "${version}" | sort -V | tail -n 1) != "${version}" ]]; then
+            echo "::error::Version ${version} in composer.json is lower than the latest release ${latestVersion}"
+            exit 1
+          fi
+
+          # the section "## <version>" of CHANGELOG.md, up to the next section of the same level
+          notes=""
+          if [[ -f CHANGELOG.md ]]; then
+            notes=$(awk -v version="${version}" '
+              /^## / { if (found) exit; if ($2 == version) { found = 1; next } }
+              found { print }
+            ' CHANGELOG.md)
+          fi
+          if [[ -z "${notes//[[:space:]]/}" ]]; then
+            echo "::warning::No section for version ${version} in CHANGELOG.md"
+            notes="Release ${version}"
+          fi
+          printf '%s\n' "${notes}" > release-notes.md
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${version}" -m "${version}" "${GITHUB_SHA}"
+          git push origin "refs/tags/${version}"
+          gh release create "${version}" --verify-tag --title "${version}" --notes-file release-notes.md
+          echo "::notice::Released ${version}"
