@@ -4,6 +4,7 @@
     - inspections.xml: inspection settings of the "Project Default" profile
       (.idea/inspectionProfiles/Project_Default.xml); each inspection_tool element replaces the one of the same class
     - project-resources.xml: XML schema catalog for urn:magento:... (component ProjectResources in .idea/misc.xml)
+    - module-folders.xml: folders that are indexed or excluded (.idea/<module>.iml)
 
 Modules without a .idea folder are skipped; PhpStorm creates it when the module is opened for the first time, so run
 the script again afterwards. PhpStorm reloads changed project files; if a module is open, check that the settings are
@@ -41,6 +42,21 @@ EMPTY_MISC = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+def read_file(path: Path) -> tuple[str, str]:
+    """Returns the content with \\n line endings and the line ending of the file (PhpStorm on Windows uses \\r\\n)."""
+    if not path.is_file():
+        return "", "\n"
+    with path.open(encoding="utf-8", newline="") as file:
+        content = file.read()
+    return content.replace("\r\n", "\n"), "\r\n" if "\r\n" in content else "\n"
+
+
+def write_file(path: Path, content: str, line_ending: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as file:
+        file.write(content.replace("\n", line_ending))
+
+
 def inspection_tools() -> list[tuple[str, str]]:
     """Returns (class, element) of every inspection_tool in inspections.xml."""
     source = (TEMPLATE_PATH / "inspections.xml").read_text(encoding="utf-8")
@@ -55,6 +71,33 @@ def inspection_tools() -> list[tuple[str, str]]:
 def project_resources() -> str:
     source = (TEMPLATE_PATH / "project-resources.xml").read_text(encoding="utf-8")
     return re.search(r'  <component name="ProjectResources">.*?</component>\n', source, re.S).group(0)
+
+
+def module_folders() -> tuple[list[str], list[str]]:
+    """Returns the paths to index and the paths to exclude from module-folders.xml."""
+    source = (TEMPLATE_PATH / "module-folders.xml").read_text(encoding="utf-8")
+    source = re.sub(r"<!--.*?-->", "", source, flags=re.S)
+    return re.findall(r'<index path="([^"]+)"', source), re.findall(r'<exclude path="([^"]+)"', source)
+
+
+def apply_folders(iml: str, index: list[str], exclude: list[str]) -> str:
+    for path in index:
+        iml = re.sub(r'[ \t]*<excludeFolder url="file://\$MODULE_DIR\$/' + re.escape(path) + r'" />\n', "", iml)
+    for path in exclude:
+        element = f'<excludeFolder url="file://$MODULE_DIR$/{path}" />'
+        if element in iml:
+            continue
+        content = re.search(r'([ \t]*)<content url="file://\$MODULE_DIR\$"\s*(/?)>', iml)
+        if not content:
+            continue
+        if content.group(2):
+            # empty content element
+            iml = iml.replace(content.group(0), f'{content.group(1)}<content url="file://$MODULE_DIR$">\n'
+                              f'{content.group(1)}  {element}\n{content.group(1)}</content>', 1)
+        else:
+            iml = re.sub(r'(<content url="file://\$MODULE_DIR\$"\s*>.*?)([ \t]*</content>)',
+                         lambda m: m.group(1) + f'{content.group(1)}  {element}\n' + m.group(2), iml, count=1, flags=re.S)
+    return iml
 
 
 def apply_inspections(profile: str, tools: list[tuple[str, str]]) -> str:
@@ -88,6 +131,7 @@ def main() -> int:
 
     tools = inspection_tools()
     resources = project_resources()
+    index, exclude = module_folders()
     outdated = False
 
     for directory in directories:
@@ -101,8 +145,10 @@ def main() -> int:
             idea / "inspectionProfiles" / "profiles_settings.xml": lambda s: s or EMPTY_PROFILE_SETTINGS,
             idea / "misc.xml": lambda s: apply_resources(s or EMPTY_MISC, resources),
         }
+        for iml in sorted(idea.glob("*.iml")):
+            files[iml] = lambda s: apply_folders(s, index, exclude)
         for path, update in files.items():
-            current = path.read_text(encoding="utf-8") if path.is_file() else ""
+            current, line_ending = read_file(path)
             updated = update(current)
             if updated == current:
                 continue
@@ -110,8 +156,7 @@ def main() -> int:
                 print(f"Outdated: {path}")
                 outdated = True
             else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(updated, encoding="utf-8")
+                write_file(path, updated, line_ending)
                 print(f"{'Updated' if current else 'Added'}: {path}")
 
     return 1 if check and outdated else 0

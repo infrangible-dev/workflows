@@ -116,13 +116,14 @@ Typing `protected` properties is a breaking change for classes that extend them,
 |--------------------------|----------------------------------------------------|---------------------------------------------|
 | `inspections.xml`        | `.idea/inspectionProfiles/Project_Default.xml`     | inspections that are changed, with reasons  |
 | `project-resources.xml`  | `.idea/misc.xml` (component `ProjectResources`)    | catalog of the `urn:magento:...` schemas    |
+| `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude                 |
 
 ```bash
 tools/configure-phpstorm.py ../m2-*            # apply the settings to all modules with a .idea folder
 tools/configure-phpstorm.py --check ../m2-*    # only list modules with different settings
 ```
 
-Only the listed inspections and the schema catalog are changed; all other settings of the profile stay as they are.
+Only the listed inspections, folders and the schema catalog are changed, and the line endings of the files are kept; all other settings of the profile stay as they are.
 PhpStorm creates `.idea` when a module is opened for the first time, so run the script again for new modules.
 
 To change an inspection for all modules, add it to `inspections.xml` with a comment why, and run the script.

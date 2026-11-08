@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Folder settings that tools/configure-phpstorm.py applies to the module file of every module (.idea/<module>.iml).
+ *   index:   an excluded folder with this path is no longer excluded
+ *   exclude: the folder is excluded
+-->
+<folders>
+    <!--
+     * Magento generates factories, proxies and interceptors (for example Magento\Framework\HTTP\Client\CurlFactory)
+     * into generated/code, so PhpStorm has to index it; otherwise they are reported as undefined classes.
+    -->
+    <index path="generated" />
+    <!-- compiled configuration, no classes -->
+    <exclude path="generated/metadata" />
+</folders>
