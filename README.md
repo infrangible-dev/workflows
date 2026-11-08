@@ -67,3 +67,42 @@ The matrix can be changed with the input `matrix` (JSON list of objects with `ma
 The module needs `phpcs.xml`, `phpstan.neon` and `phpunit.xml` in its root directory, and the PHPStan and PHPUnit
 configuration have to load the Magento installation from `MAGENTO_ROOT` (see `phpstan.bootstrap.php` and
 `phpunit.bootstrap.php` in [m2-foundation](https://github.com/infrangible-dev/m2-foundation)).
+
+## Shared module configuration
+
+`templates/magento-module` contains the configuration that is the same in every module:
+
+| File                       | Purpose                                                                  |
+|----------------------------|--------------------------------------------------------------------------|
+| `phpcs.xml`                | Magento2 coding standard and PHP 8.2 compatibility for `src`             |
+| `phpstan.neon`             | PHPStan level 9 for `src`                                                |
+| `phpstan.bootstrap.php`    | loads the PHPStan autoloader of Magento from `MAGENTO_ROOT`              |
+| `phpunit.xml`              | unit tests in `src/Test/Unit`                                            |
+| `phpunit.bootstrap.php`    | loads the bootstrap of the Magento unit tests from `MAGENTO_ROOT`        |
+| `.github/workflows/ci.yml` | calls the workflow of this repository                                    |
+
+`MAGENTO_ROOT` defaults to `/var/www/magento`, the Magento installation of the Anodosys development environment.
+
+Change these files here and copy them into the modules with:
+
+```bash
+tools/sync-module-config.sh ../m2-*            # add or update the files in all modules
+tools/sync-module-config.sh --check ../m2-*    # only list modules with missing or outdated files
+```
+
+Directories without `composer.json` and `src` are skipped.
+
+## Tools
+
+`tools/add-property-types.py` adds native type declarations to class properties, taken from their `@var` docblocks
+(`/** @var PageFactory */ protected $factory;` becomes `protected PageFactory $factory;`). It only changes
+properties whose type is unambiguous and lists the others; the docblocks stay, as the Magento coding standard requires
+them. Test doubles (`Class&MockObject`, `Class&Stub`) get `MockObject` or `Stub` as native type, because the coding
+standard does not recognize docblocks of intersection types.
+
+```bash
+tools/add-property-types.py --dry-run ../m2-core/src   # show what would change
+tools/add-property-types.py ../m2-core/src
+```
+
+Typing `protected` properties is a breaking change for classes that extend them, so it belongs in a major version.
