@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Exceptions that PhpStorm does not require in @throws tags (Settings | PHP | Analysis | Unchecked Exceptions),
+ * which tools/configure-phpstorm.py adds to .idea/php.xml of every module. A stored list replaces the defaults of
+ * PhpStorm, so they are listed as well.
+-->
+<unchecked_exceptions>
+    <!-- defaults of PhpStorm -->
+    <fqn value="\Error" />
+    <fqn value="\LogicException" />
+    <fqn value="\RuntimeException" />
+    <!--
+     * PHPUnit declares interfaces like PHPUnit\Framework\MockObject\Exception in @throws of createMock(), so every test
+     * would have to list them, although they only signal broken tests.
+    -->
+    <fqn value="\PHPUnit\Exception" />
+</unchecked_exceptions>

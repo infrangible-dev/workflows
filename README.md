@@ -141,6 +141,7 @@ tools/add-return-tags.py ../m2-core/src
 | `project-resources.xml`  | `.idea/misc.xml` (component `ProjectResources`)    | catalog of the `urn:magento:...` schemas    |
 | `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude                 |
 | `stubs/`                 | include path in `.idea/php.xml`                    | classes for PhpStorm only (see below)       |
+| `unchecked-exceptions.xml` | `.idea/php.xml` (`PhpAnalysisConfiguration`)     | exceptions that need no `@throws` tag       |
 
 ```bash
 tools/configure-phpstorm.py ../m2-*            # apply the settings to all modules with a .idea folder

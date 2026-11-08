@@ -8,6 +8,7 @@
       inspection_tool element replaces the one of the same class
     - project-resources.xml: XML schema catalog for urn:magento:... (component ProjectResources in .idea/misc.xml)
     - module-folders.xml: folders that are indexed or excluded (.idea/<module>.iml)
+    - unchecked-exceptions.xml: exceptions that need no @throws tag (.idea/php.xml, merged with existing ones)
     - stubs: declarations for PhpStorm only, added as include path (.idea/php.xml), relative to the module, so the
       workflows repository has to be next to the modules
 
@@ -129,6 +130,29 @@ def apply_include_path(php: str, path: str) -> str:
     return php.replace("</project>", block + "</project>", 1)
 
 
+def unchecked_exceptions() -> list[str]:
+    source = (TEMPLATE_PATH / "unchecked-exceptions.xml").read_text(encoding="utf-8")
+    source = re.sub(r"<!--.*?-->", "", source, flags=re.S)
+    return re.findall(r'<fqn value="([^"]+)"', source)
+
+
+def apply_unchecked_exceptions(php: str, fqns: list[str]) -> str:
+    component = re.search(
+        r'([ \t]*)<component name="PhpAnalysisConfiguration">\s*<unchecked_exceptions>(.*?)</unchecked_exceptions>'
+        r'\s*</component>\n', php, re.S)
+    existing = re.findall(r'<fqn value="([^"]+)"', component.group(2)) if component else []
+    merged = sorted(set(existing) | set(fqns))
+    if component and merged == sorted(existing):
+        return php
+    block = '  <component name="PhpAnalysisConfiguration">\n    <unchecked_exceptions>\n'
+    block += "".join(f'      <fqn value="{fqn}" />\n' for fqn in merged)
+    block += '    </unchecked_exceptions>\n  </component>\n'
+    if component:
+        return php[:component.start()] + block + php[component.end():]
+    # components are sorted by name in PhpStorm files, but any position works
+    return php.replace("</project>", block + "</project>", 1)
+
+
 def apply_inspections(profile: str, tools: list[tuple[str, str]]) -> str:
     for tool_class, element in tools:
         pattern = re.compile(
@@ -170,6 +194,7 @@ def main() -> int:
     settings = profile_settings()
     resources = project_resources()
     index, exclude = module_folders()
+    unchecked = unchecked_exceptions()
     outdated = False
 
     for directory in directories:
@@ -182,7 +207,8 @@ def main() -> int:
             idea / "inspectionProfiles" / "Project_Default.xml": lambda s: apply_inspections(s or EMPTY_PROFILE, tools),
             idea / "inspectionProfiles" / "profiles_settings.xml": lambda s: settings,
             idea / "misc.xml": lambda s: apply_resources(s or EMPTY_MISC, resources),
-            idea / "php.xml": lambda s: apply_include_path(s or EMPTY_PHP, STUBS_INCLUDE_PATH),
+            idea / "php.xml": lambda s: apply_unchecked_exceptions(
+                apply_include_path(s or EMPTY_PHP, STUBS_INCLUDE_PATH), unchecked),
         }
         for iml in sorted(idea.glob("*.iml")):
             files[iml] = lambda s: apply_folders(s, index, exclude)
