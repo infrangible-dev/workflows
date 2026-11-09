@@ -22,8 +22,10 @@ On every push and pull request, for each combination of the matrix:
    installed into it.
 2. PHPCS with the `phpcs.xml` of the module and checks of conventions the tools cannot express, both only with the
    newest Magento version:
-   - no `mixed[]` in docblocks: PhpStorm reports it as replaceable with `array`, PHPStan level 9 needs the value
-     type, so use `@param array $x` together with `@phpstan-param array<string, mixed> $x`
+   - no `mixed[]` or `array<mixed>` in docblocks: PhpStorm reports them as replaceable with `array`, PHPStan level 9
+     needs the value type, so use `@param array $x` together with `@phpstan-param array<string, mixed> $x` (or
+     `array<int, mixed>`, or a more precise type); checked with `tools/check-docblock-conventions.sh <module>`, which
+     can also be run locally
    - every class, function and constant used by the module comes from a dependency in its `composer.json`, PHP
      extensions (`ext-<name>`) included, checked with
      [ComposerRequireChecker](https://github.com/maglnet/ComposerRequireChecker) through

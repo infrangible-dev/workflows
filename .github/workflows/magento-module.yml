@@ -99,15 +99,17 @@ jobs:
         working-directory: module
         run: "${MAGENTO_ROOT}/vendor/bin/phpcs"
 
+      - name: Check out shared tools
+        if: matrix.phpcs
+        uses: actions/checkout@v7
+        with:
+          repository: infrangible-dev/workflows
+          path: workflows
+
       - name: Docblock conventions
         if: matrix.phpcs
-        working-directory: module
-        run: |
-          # PhpStorm reports "mixed[]" as replaceable with "array", PHPStan needs the value type: use both notations
-          if grep -rnE --include='*.php' --include='*.phtml' 'mixed\[\]' src; then
-            echo "::error::Use '@param array \$x' with '@phpstan-param array<string, mixed> \$x' instead of 'mixed[]'"
-            exit 1
-          fi
+        # array types that PhpStorm and PHPStan both accept, see the script
+        run: workflows/tools/check-docblock-conventions.sh module
 
       - name: Static analysis
         working-directory: module
@@ -116,13 +118,6 @@ jobs:
       - name: Unit tests
         working-directory: module
         run: "${MAGENTO_ROOT}/vendor/bin/phpunit -c phpunit.xml"
-
-      - name: Check out shared tools
-        if: matrix.phpcs
-        uses: actions/checkout@v7
-        with:
-          repository: infrangible-dev/workflows
-          path: workflows
 
       - name: Dependencies in composer.json
         if: matrix.phpcs
