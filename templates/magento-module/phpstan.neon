@@ -21,6 +21,8 @@ parameters:
             - RuntimeException
             # PHPUnit declares interfaces like PHPUnit\Framework\MockObject\Exception in @throws of createMock()
             - PHPUnit\Exception
+            # thrown by Magento\Framework\DB\Select for invalid parts of a query, a programming error
+            - Zend_Db_Select_Exception
     ignoreErrors:
         # the tests use attributes of newer PHPUnit versions (DataProvider: 10+, AllowMockObjectsWithoutExpectations:
         # 12.5+), which older versions ignore; Magento 2.4.6 comes with PHPUnit 9

@@ -19,4 +19,9 @@
     <fqn value="\PHPUnit\Framework\SkippedTest" />
     <fqn value="\PHPUnit\Runner\Exception" />
     <fqn value="\PHPUnit\Util\Exception" />
+    <!--
+     * Thrown by Magento\Framework\DB\Select (getPart(), reset(), ...) for invalid parts of a query, which is a
+     * programming error, so callers would only have to pass it on.
+    -->
+    <fqn value="\Zend_Db_Select_Exception" />
 </unchecked_exceptions>
