@@ -34,6 +34,9 @@ On every push and pull request, for each combination of the matrix:
      in `requirejs-config.js`), PhpStorm reports `var`; only the module's own files with the copyright header are
      checked, not bundled libraries; all checked with `tools/check-code-conventions.sh <module>`, which can also be
      run locally
+   - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
+     functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
+     `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes
    - no duplicated code (at least 5 identical lines and 100 tokens, variable names ignored, like the PhpStorm
      inspection "Duplicated code fragment"), checked with [PHPCPD](https://github.com/systemsdk/phpcpd) through
      `tools/check-duplicated-code.sh <module> [<phpcpd>]`; move duplicated code into a shared method or base class,

@@ -2,6 +2,7 @@
 #
 # Checks (on every push and pull request):
 #   - coding standard (PHPCS with the phpcs.xml of the module), with the newest Magento version
+#   - syntax of PHP 8.2 (Rector), with the newest Magento version
 #   - static analysis (PHPStan with the phpstan.neon of the module), with every Magento version
 #   - unit tests (PHPUnit with the phpunit.xml of the module), with every Magento version
 #
@@ -118,6 +119,14 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/phpcpd"
           composer require --no-interaction --no-progress --working-dir "${RUNNER_TEMP}/phpcpd" "systemsdk/phpcpd:~9.2.0"
           workflows/tools/check-duplicated-code.sh module "${RUNNER_TEMP}/phpcpd/vendor/bin/phpcpd"
+
+      - name: PHP 8.2 syntax
+        if: matrix.phpcs
+        run: |
+          # Rector reports code that the syntax of PHP 8.2 writes shorter, see templates/rector/rector.php
+          mkdir -p "${RUNNER_TEMP}/rector"
+          composer require --no-interaction --no-progress --working-dir "${RUNNER_TEMP}/rector" "rector/rector:~2.8.0"
+          workflows/tools/check-php-syntax.sh module "${MAGENTO_ROOT}" "${RUNNER_TEMP}/rector/vendor/bin/rector"
 
       - name: Static analysis
         working-directory: module
