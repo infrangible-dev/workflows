@@ -16,4 +16,10 @@
      * Composer synchronization adds all of them as include paths, so the warning cannot be avoided by excluding folders.
     -->
     <inspection_tool class="PhpMultipleClassDeclarationsInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <!--
+     * Constants of Zend classes are referenced via Magento's subclasses, for example Select::COLUMNS (defined in
+     * Zend_Db_Select): the Magento coding standard forbids using Zend_Db_Select and other Zend classes directly
+     * (Magento2.Legacy.RestrictedCode), so the quick fix of this inspection would break PHPCS.
+    -->
+    <inspection_tool class="PhpClassConstantAccessedViaChildClassInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
 </inspections>
