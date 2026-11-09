@@ -29,8 +29,11 @@ On every push and pull request, for each combination of the matrix:
    - nullsafe operator instead of null checks before a method call (`$x?->get()` instead of
      `$x !== null ? $x->get() : null`), PhpStorm reports the ternary as replaceable
    - no unused exception variables: exceptions that are caught without using them are caught without variable
-     (`catch (NoSuchEntityException)`), PhpStorm reports the variable as unused; all checked with
-     `tools/check-code-conventions.sh <module>`, which can also be run locally
+     (`catch (NoSuchEntityException)`), PhpStorm reports the variable as unused
+   - no `var` in JavaScript: variables are declared with `const`, or `let` if they are assigned again (also `config`
+     in `requirejs-config.js`), PhpStorm reports `var`; only the module's own files with the copyright header are
+     checked, not bundled libraries; all checked with `tools/check-code-conventions.sh <module>`, which can also be
+     run locally
    - no duplicated code (at least 5 identical lines and 100 tokens, variable names ignored, like the PhpStorm
      inspection "Duplicated code fragment"), checked with [PHPCPD](https://github.com/systemsdk/phpcpd) through
      `tools/check-duplicated-code.sh <module> [<phpcpd>]`; move duplicated code into a shared method or base class,

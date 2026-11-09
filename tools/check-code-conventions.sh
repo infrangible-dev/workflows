@@ -13,6 +13,11 @@
 # Null checks before a method call are written with the nullsafe operator (PHP 8: "$x?->get()" instead of
 # "$x !== null ? $x->get() : null"), PhpStorm reports the ternary as replaceable.
 #
+# JavaScript variables are declared with "const" or "let" instead of "var" (ES6, supported by all browsers of Magento
+# 2.4), PhpStorm reports "var". Only the JavaScript files of the module itself are checked (with the copyright header
+# of Andreas Knollmann), not bundled libraries like select2.js. The variable "config" of requirejs-config.js may be a
+# "const": Magento wraps each file in a function before it reads the variable.
+#
 # Usage: tools/check-code-conventions.sh <module directory>
 
 set -u
@@ -98,6 +103,31 @@ PYTHON
 if [[ -n "${nullsafe}" ]]; then
   echo "${nullsafe}"
   message="Use the nullsafe operator: '\$x?->get()' instead of '\$x !== null ? \$x->get() : null'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# JavaScript variables declared with var
+jsVar=$(python3 - <<'PYTHON'
+import pathlib, re
+
+pattern = re.compile(r'(?<![\w$.])var\s+[\w$]')
+for path in sorted(pathlib.Path('src').rglob('*.js')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    if 'Andreas Knollmann' not in source[:1000]:
+        continue
+    for number, line in enumerate(source.splitlines(), 1):
+        if pattern.search(line.split('//', 1)[0]):
+            print(f'{path}:{number}: {line.strip()}')
+PYTHON
+)
+if [[ -n "${jsVar}" ]]; then
+  echo "${jsVar}"
+  message="Declare JavaScript variables with 'const' (or 'let' if they are assigned again) instead of 'var'"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
