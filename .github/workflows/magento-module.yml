@@ -108,7 +108,7 @@ jobs:
 
       - name: Code conventions
         if: matrix.phpcs
-        # array types that PhpStorm and PHPStan both accept, no unused catch variables; see the script
+        # findings PhpStorm reports that PHPCS and PHPStan do not check, see the script
         run: workflows/tools/check-code-conventions.sh module
 
       - name: Static analysis

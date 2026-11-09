@@ -22,11 +22,14 @@ On every push and pull request, for each combination of the matrix:
    installed into it.
 2. PHPCS with the `phpcs.xml` of the module and checks of conventions the tools cannot express, both only with the
    newest Magento version:
-   - no `mixed[]` or `array<mixed>` in docblocks: PhpStorm reports them as replaceable with `array`, PHPStan level 9
-     needs the value type, so use `@param array $x` together with `@phpstan-param array<string, mixed> $x` (or
-     `array<int, mixed>`, or a more precise type)
+   - no `mixed[]`, `array<mixed>` or `array<mixed, …>` in docblocks: PhpStorm reports them as replaceable with
+     `array`, PHPStan level 9 needs the value type, so use `@param array $x` together with
+     `@phpstan-param array<string, mixed> $x` (or `array<int, mixed>`, `array<int|string, mixed>`, or a more precise
+     type)
+   - nullsafe operator instead of null checks before a method call (`$x?->get()` instead of
+     `$x !== null ? $x->get() : null`), PhpStorm reports the ternary as replaceable
    - no unused exception variables: exceptions that are caught without using them are caught without variable
-     (`catch (NoSuchEntityException)`), PhpStorm reports the variable as unused; both checked with
+     (`catch (NoSuchEntityException)`), PhpStorm reports the variable as unused; all checked with
      `tools/check-code-conventions.sh <module>`, which can also be run locally
    - every class, function and constant used by the module comes from a dependency in its `composer.json`, PHP
      extensions (`ext-<name>`) included, checked with
