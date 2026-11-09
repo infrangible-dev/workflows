@@ -106,10 +106,10 @@ jobs:
           repository: infrangible-dev/workflows
           path: workflows
 
-      - name: Docblock conventions
+      - name: Code conventions
         if: matrix.phpcs
-        # array types that PhpStorm and PHPStan both accept, see the script
-        run: workflows/tools/check-docblock-conventions.sh module
+        # array types that PhpStorm and PHPStan both accept, no unused catch variables; see the script
+        run: workflows/tools/check-code-conventions.sh module
 
       - name: Static analysis
         working-directory: module

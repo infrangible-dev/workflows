@@ -24,8 +24,10 @@ On every push and pull request, for each combination of the matrix:
    newest Magento version:
    - no `mixed[]` or `array<mixed>` in docblocks: PhpStorm reports them as replaceable with `array`, PHPStan level 9
      needs the value type, so use `@param array $x` together with `@phpstan-param array<string, mixed> $x` (or
-     `array<int, mixed>`, or a more precise type); checked with `tools/check-docblock-conventions.sh <module>`, which
-     can also be run locally
+     `array<int, mixed>`, or a more precise type)
+   - no unused exception variables: exceptions that are caught without using them are caught without variable
+     (`catch (NoSuchEntityException)`), PhpStorm reports the variable as unused; both checked with
+     `tools/check-code-conventions.sh <module>`, which can also be run locally
    - every class, function and constant used by the module comes from a dependency in its `composer.json`, PHP
      extensions (`ext-<name>`) included, checked with
      [ComposerRequireChecker](https://github.com/maglnet/ComposerRequireChecker) through
