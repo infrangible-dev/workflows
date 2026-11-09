@@ -134,6 +134,19 @@ tools/add-property-types.py ../m2-core/src
 
 Typing `protected` properties is a breaking change for classes that extend them, so it belongs in a major version.
 
+`tools/add-method-docblocks.py` completes method docblocks as the Magento coding standard expects them: methods
+without docblock get one, docblocks without short description get one generated from the method name (`getX` becomes
+"Returns the x.", `loadX` "Loads the x.", `isX` "Checks whether it is x." and so on; constructors need none), and
+missing `@param` tags (in argument order, existing ones are kept and sorted) and `@return` tags are added from the
+native types. It lists every generated description, which are only a start and should be improved where the method
+name says too little, as well as arguments and methods without native type (`mixed`) and arrays, which need a
+`@phpstan-param` / `@phpstan-return` with the value type for PHPStan level 9.
+
+```bash
+tools/add-method-docblocks.py --dry-run ../m2-core/src
+tools/add-method-docblocks.py ../m2-core/src
+```
+
 `tools/add-return-tags.py` adds missing `@return` tags to method docblocks, taken from the native return type, as the
 PhpStorm default inspection "Missing @return tag" expects. Constructors, docblocks with `{@inheritDoc}` and methods
 without native return type are skipped (the latter are listed).
