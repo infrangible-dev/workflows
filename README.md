@@ -31,6 +31,11 @@ On every push and pull request, for each combination of the matrix:
    - no unused exception variables: exceptions that are caught without using them are caught without variable
      (`catch (NoSuchEntityException)`), PhpStorm reports the variable as unused; all checked with
      `tools/check-code-conventions.sh <module>`, which can also be run locally
+   - no duplicated code (at least 5 identical lines and 100 tokens, variable names ignored, like the PhpStorm
+     inspection "Duplicated code fragment"), checked with [PHPCPD](https://github.com/systemsdk/phpcpd) through
+     `tools/check-duplicated-code.sh <module> [<phpcpd>]`; move duplicated code into a shared method or base class,
+     merge tests that only differ in their data into one test with a data provider; locally, install phpcpd with
+     `cosyses PHPCPD 9.2`
    - every class, function and constant used by the module comes from a dependency in its `composer.json`, PHP
      extensions (`ext-<name>`) included, checked with
      [ComposerRequireChecker](https://github.com/maglnet/ComposerRequireChecker) through

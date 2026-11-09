@@ -111,6 +111,14 @@ jobs:
         # findings PhpStorm reports that PHPCS and PHPStan do not check, see the script
         run: workflows/tools/check-code-conventions.sh module
 
+      - name: Duplicated code
+        if: matrix.phpcs
+        run: |
+          # PHPCPD needs PHP 8.4 or newer, the checks with the newest Magento version run with it
+          mkdir -p "${RUNNER_TEMP}/phpcpd"
+          composer require --no-interaction --no-progress --working-dir "${RUNNER_TEMP}/phpcpd" "systemsdk/phpcpd:~9.2.0"
+          workflows/tools/check-duplicated-code.sh module "${RUNNER_TEMP}/phpcpd/vendor/bin/phpcpd"
+
       - name: Static analysis
         working-directory: module
         run: "${MAGENTO_ROOT}/vendor/bin/phpstan analyse -c phpstan.neon --no-progress --memory-limit=2G"
