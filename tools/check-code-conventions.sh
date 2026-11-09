@@ -53,7 +53,17 @@ for path in sorted(pathlib.Path('src').rglob('*.php')):
         while depth and end < len(source):
             depth += (source[end] == '{') - (source[end] == '}')
             end += 1
-        if not re.search(re.escape(match.group(2)) + r'\b', source[start:end]):
+        body = source[start:end]
+        # a nested catch with the same variable overwrites it, so uses inside it do not count
+        nested = re.compile(r'catch\s*\([^)$]+?\s+' + re.escape(match.group(2)) + r'\)\s*\{')
+        while (inner := nested.search(body)) is not None:
+            innerEnd = inner.end()
+            innerDepth = 1
+            while innerDepth and innerEnd < len(body):
+                innerDepth += (body[innerEnd] == '{') - (body[innerEnd] == '}')
+                innerEnd += 1
+            body = body[:inner.start()] + body[innerEnd:]
+        if not re.search(re.escape(match.group(2)) + r'\b', body):
             line = source.count('\n', 0, match.start()) + 1
             print(f'{path}:{line}: catch ({match.group(1)} {match.group(2)})')
 PYTHON
