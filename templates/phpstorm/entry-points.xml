@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Entry points of the inspection "Unused declaration" (component PhpEntryPointsManager in .idea/misc.xml): classes of
+  the modules are used by other modules and by Magento (di.xml, layout XML, system.xml), which PhpStorm does not see
+  when only one module is open, so it would report them as unused.
+-->
+<project version="4">
+  <component name="PhpEntryPointsManager">
+    <pattern value="\Infrangible\*" />
+  </component>
+</project>

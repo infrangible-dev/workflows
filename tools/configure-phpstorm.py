@@ -7,6 +7,8 @@
       (.idea/inspectionProfiles/Project_Default.xml) and, with --ide-profile, into the IDE profile; each
       inspection_tool element replaces the one of the same class
     - project-resources.xml: XML schema catalog for urn:magento:... (component ProjectResources in .idea/misc.xml)
+    - entry-points.xml: class patterns the inspection "Unused declaration" treats as used (component
+      PhpEntryPointsManager in .idea/misc.xml)
     - module-folders.xml: folders that are indexed or excluded (.idea/<module>.iml)
     - unchecked-exceptions.xml: exceptions that need no @throws tag (.idea/php.xml, merged with existing ones)
     - stubs: declarations for PhpStorm only, added as include path (.idea/php.xml), relative to the module, so the
@@ -170,11 +172,16 @@ def apply_inspections(profile: str, tools: list[tuple[str, str]]) -> str:
     return profile
 
 
-def apply_resources(misc: str, resources: str) -> str:
-    pattern = re.compile(r'[ \t]*<component name="ProjectResources">.*?</component>\n', re.S)
+def entry_points() -> str:
+    source = (TEMPLATE_PATH / "entry-points.xml").read_text(encoding="utf-8")
+    return re.search(r'  <component name="PhpEntryPointsManager">.*?</component>\n', source, re.S).group(0)
+
+
+def apply_component(misc: str, name: str, component: str) -> str:
+    pattern = re.compile(r'[ \t]*<component name="' + name + r'">.*?</component>\n', re.S)
     if pattern.search(misc):
-        return pattern.sub(lambda m: resources, misc, count=1)
-    return misc.replace("</project>", resources + "</project>", 1)
+        return pattern.sub(lambda m: component, misc, count=1)
+    return misc.replace("</project>", component + "</project>", 1)
 
 
 def main() -> int:
@@ -193,6 +200,7 @@ def main() -> int:
     tools = inspection_tools()
     settings = profile_settings()
     resources = project_resources()
+    entries = entry_points()
     index, exclude = module_folders()
     unchecked = unchecked_exceptions()
     outdated = False
@@ -206,7 +214,8 @@ def main() -> int:
         files = {
             idea / "inspectionProfiles" / "Project_Default.xml": lambda s: apply_inspections(s or EMPTY_PROFILE, tools),
             idea / "inspectionProfiles" / "profiles_settings.xml": lambda s: settings,
-            idea / "misc.xml": lambda s: apply_resources(s or EMPTY_MISC, resources),
+            idea / "misc.xml": lambda s: apply_component(
+                apply_component(s or EMPTY_MISC, "PhpEntryPointsManager", entries), "ProjectResources", resources),
             idea / "php.xml": lambda s: apply_unchecked_exceptions(
                 apply_include_path(s or EMPTY_PHP, STUBS_INCLUDE_PATH), unchecked),
         }

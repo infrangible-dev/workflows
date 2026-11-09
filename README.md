@@ -182,6 +182,7 @@ tools/add-return-tags.py ../m2-core/src
 | `inspections.xml`        | `.idea/inspectionProfiles/Project_Default.xml`     | inspections that are changed, with reasons  |
 |                          | and the IDE profile (`--ide-profile`)              |                                             |
 | `project-resources.xml`  | `.idea/misc.xml` (component `ProjectResources`)    | catalog of the `urn:magento:...` schemas    |
+| `entry-points.xml`       | `.idea/misc.xml` (`PhpEntryPointsManager`)         | `\Infrangible\*` classes are not unused     |
 | `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude                 |
 | `stubs/`                 | include path in `.idea/php.xml`                    | classes for PhpStorm only (see below)       |
 | `unchecked-exceptions.xml` | `.idea/php.xml` (`PhpAnalysisConfiguration`)     | exceptions that need no `@throws` tag       |
