@@ -12,6 +12,7 @@
 declare(strict_types=1);
 
 use Rector\CodingStyle\Rector\FuncCall\FunctionFirstClassCallableRector;
+use Rector\Php81\Rector\Array_\ArrayToFirstClassCallableRector;
 use Rector\Config\RectorConfig;
 use Rector\Php70\Rector\FuncCall\RandomFunctionRector;
 use Rector\Php80\Rector\Ternary\TernaryToNullsafeCoalesceRector;
@@ -40,6 +41,9 @@ return RectorConfig::configure()
     ->withSkip([
         // Magento PHPCS discourages intval(), strval() etc., so the string callables are kept
         FunctionFirstClassCallableRector::class,
+        // Magento reads some callbacks as arrays, for example the filter_condition_callback of grid columns
+        // (Magento\Backend\Block\Widget\Grid::_addColumnFilterToCollection()) and the frame_callback
+        ArrayToFirstClassCallableRector::class,
         // rand() is no security function in the modules, random_int() would throw RandomException
         RandomFunctionRector::class,
         // $x?->get() ?? $default also uses the default when get() returns null, for example a NULL value of fetchOne()
