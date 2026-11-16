@@ -15,6 +15,7 @@
         <file path="vendor/magento/magento2-base/lib/web/jquery.js" />
         <file path="vendor/magento/magento2-base/lib/web/jquery/ui-modules/widget.js" />
         <file path="vendor/magento/magento2-base/lib/web/mage/translate.js" />
+        <file path="vendor/magento/magento2-base/lib/web/mage/adminhtml/tools.js" />
         <file path="vendor/magento/magento2-base/lib/web/underscore.js" />
         <file path="vendor/magento/magento2-base/lib/web/knockoutjs/knockout.js" />
         <file path="vendor/magento/magento2-base/lib/web/prototype/prototype.js" />
