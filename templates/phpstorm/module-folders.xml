@@ -12,4 +12,12 @@
     <index path="generated" />
     <!-- compiled configuration, no classes -->
     <exclude path="generated/metadata" />
+    <!--
+     * Caches, logs and the preprocessed copies of the templates (var/view_preprocessed), deployed static files and
+     * media of the Magento installation: copies of the module's templates, JavaScript and styles there are reported as
+     * duplicated code.
+    -->
+    <exclude path="var" />
+    <exclude path="pub/static" />
+    <exclude path="pub/media" />
 </folders>
