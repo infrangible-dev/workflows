@@ -18,6 +18,10 @@
 # of Andreas Knollmann), not bundled libraries like select2.js. The variable "config" of requirejs-config.js may be a
 # "const": Magento wraps each file in a function before it reads the variable.
 #
+# Methods that return nothing declare "@return void" in their docblock; PhpStorm reports a docblock with another return
+# type (for example "@return mixed") as "Missing 'return' statement". PHPStan does not, when the method has no native
+# return type.
+#
 # Usage: tools/check-code-conventions.sh <module directory>
 
 set -u
@@ -128,6 +132,42 @@ PYTHON
 if [[ -n "${jsVar}" ]]; then
   echo "${jsVar}"
   message="Declare JavaScript variables with 'const' (or 'let' if they are assigned again) instead of 'var'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# methods with a return type in their docblock that return nothing
+missingReturn=$(python3 - <<'PYTHON'
+import pathlib, re
+
+pattern = re.compile(
+    r'@return\s+([^\s*]+)(?:(?!\*/).)*?\*/\s*'
+    r'((?:(?:abstract|public|protected|private|static|final)\s+)*)function\s+&?(\w+)\s*'
+    r'\((?:[^()]|\([^()]*\))*\)\s*(?::\s*[^{;/]+)?\s*(?://[^\n]*\n\s*)?([{;])',
+    re.S
+)
+for path in sorted(pathlib.Path('src').rglob('*.php')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    for match in pattern.finditer(source):
+        if match.group(4) == ';' or match.group(1) in ('void', 'never'):
+            continue
+        end = match.end()
+        depth = 1
+        while depth and end < len(source):
+            depth += (source[end] == '{') - (source[end] == '}')
+            end += 1
+        if not re.search(r'\b(return|throw|yield)\b', source[match.end():end]):
+            line = source.count('\n', 0, match.start()) + 1
+            print(f'{path}:{line}: {match.group(3)}() @return {match.group(1)}')
+PYTHON
+)
+if [[ -n "${missingReturn}" ]]; then
+  echo "${missingReturn}"
+  message="Methods that return nothing declare '@return void'"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
