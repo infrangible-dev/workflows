@@ -32,8 +32,12 @@ On every push and pull request, for each combination of the matrix:
      (`catch (NoSuchEntityException)`), PhpStorm reports the variable as unused
    - no `var` in JavaScript: variables are declared with `const`, or `let` if they are assigned again (also `config`
      in `requirejs-config.js`), PhpStorm reports `var`; only the module's own files with the copyright header are
-     checked, not bundled libraries; all checked with `tools/check-code-conventions.sh <module>`, which can also be
-     run locally
+     checked, not bundled libraries
+   - methods that return nothing declare `@return void` in their docblock, PhpStorm reports another return type as
+     "Missing 'return' statement"
+   - imported classes are written with their short name (`RuntimeException` instead of `\RuntimeException` after
+     `use RuntimeException;`), PhpStorm reports the qualifier as unnecessary; all checked with
+     `tools/check-code-conventions.sh <module>`, which can also be run locally
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes

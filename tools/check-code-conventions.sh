@@ -22,6 +22,9 @@
 # type (for example "@return mixed") as "Missing 'return' statement". PHPStan does not, when the method has no native
 # return type.
 #
+# Classes that are imported with "use" are written with their short name; PhpStorm reports "\\RuntimeException" after
+# "use RuntimeException;" as "Qualifier is unnecessary and can be removed".
+#
 # Usage: tools/check-code-conventions.sh <module directory>
 
 set -u
@@ -168,6 +171,35 @@ PYTHON
 if [[ -n "${missingReturn}" ]]; then
   echo "${missingReturn}"
   message="Methods that return nothing declare '@return void'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# imported classes that are written with their fully qualified name
+qualifiedImport=$(python3 - <<'PYTHON'
+import pathlib, re
+
+for path in sorted(pathlib.Path('src').rglob('*.php')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    imports = {}
+    for match in re.finditer(r'^use\s+([\w\\]+)(?:\s+as\s+(\w+))?\s*;', source, re.M):
+        imports[match.group(1).lstrip('\\').lower()] = True
+    for number, line in enumerate(source.splitlines(), 1):
+        code = line.split('//', 1)[0]
+        if re.match(r'\s*(use\s|namespace\s|\*|/\*)', code):
+            continue
+        for match in re.finditer(r'(?<![\w\\$\'"])\\([A-Za-z_][\w\\]*)', code):
+            if match.group(1).lower() in imports:
+                print(f'{path}:{number}: {line.strip()}')
+PYTHON
+)
+if [[ -n "${qualifiedImport}" ]]; then
+  echo "${qualifiedImport}"
+  message="Use the short name of imported classes: 'RuntimeException' instead of '\\RuntimeException' after 'use RuntimeException;'"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
