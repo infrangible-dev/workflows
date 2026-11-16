@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * JavaScript libraries that tools/configure-phpstorm.py defines in every module (.idea/libraries/<name>.xml) and
+ * assigns to the whole project (.idea/jsLibraryMappings.xml, merged with libraries assigned there already).
+ *
+ * Magento's JavaScript libraries are part of the Composer package magento/magento2-base (lib/web), which PhpStorm
+ * excludes like all Composer packages, so define() of RequireJS, the functions of jQuery and jQuery UI widgets
+ * (_create, _init, ...) are reported as unresolved or unused. A library makes PhpStorm read these files without
+ * inspecting them. The paths are relative to the module, where the ads environment installs Magento.
+-->
+<libraries>
+    <library name="magento-lib-web">
+        <file path="vendor/magento/magento2-base/lib/web/requirejs/require.js" />
+        <file path="vendor/magento/magento2-base/lib/web/requirejs/domReady.js" />
+        <file path="vendor/magento/magento2-base/lib/web/jquery.js" />
+        <file path="vendor/magento/magento2-base/lib/web/jquery/ui-modules/widget.js" />
+        <file path="vendor/magento/magento2-base/lib/web/mage/translate.js" />
+        <file path="vendor/magento/magento2-base/lib/web/underscore.js" />
+        <file path="vendor/magento/magento2-base/lib/web/knockoutjs/knockout.js" />
+        <file path="vendor/magento/magento2-base/lib/web/prototype/prototype.js" />
+    </library>
+</libraries>

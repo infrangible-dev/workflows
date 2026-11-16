@@ -189,6 +189,7 @@ tools/add-return-tags.py ../m2-core/src
 | `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude                 |
 | `stubs/`                 | include path in `.idea/php.xml`                    | classes for PhpStorm only (see below)       |
 | `unchecked-exceptions.xml` | `.idea/php.xml` (`PhpAnalysisConfiguration`)     | exceptions that need no `@throws` tag       |
+| `js-libraries.xml`       | `.idea/libraries/`, `.idea/jsLibraryMappings.xml`  | Magento's RequireJS, jQuery, ... (`lib/web`) |
 
 ```bash
 tools/configure-phpstorm.py ../m2-*            # apply the settings to all modules with a .idea folder
@@ -197,6 +198,7 @@ tools/configure-phpstorm.py --check ../m2-*    # only list modules with differen
 
 Only the listed inspections, folders and the schema catalog are changed, and the line endings of the files are kept; all other settings of the profile stay as they are.
 PhpStorm creates `.idea` when a module is opened for the first time, so run the script again for new modules.
+PhpStorm loads new JavaScript libraries only when it opens a project, so reopen modules that are open.
 
 The modules use the IDE profile "Magento", a copy of the PhpStorm default inspections. To write the inspection
 settings into it as well, close PhpStorm (it saves IDE profiles itself) and run:

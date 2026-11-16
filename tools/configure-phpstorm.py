@@ -11,12 +11,15 @@
       PhpEntryPointsManager in .idea/misc.xml)
     - module-folders.xml: folders that are indexed or excluded (.idea/<module>.iml)
     - unchecked-exceptions.xml: exceptions that need no @throws tag (.idea/php.xml, merged with existing ones)
+    - js-libraries.xml: JavaScript libraries (.idea/libraries/<name>.xml), assigned to the project
+      (.idea/jsLibraryMappings.xml, merged with libraries assigned there already)
     - stubs: declarations for PhpStorm only, added as include path (.idea/php.xml), relative to the module, so the
       workflows repository has to be next to the modules
 
 Modules without a .idea folder are skipped; PhpStorm creates it when the module is opened for the first time, so run
 the script again afterwards. PhpStorm reloads changed project files; if a module is open, check that the settings are
 applied (or close the project before running the script).
+New JavaScript libraries are only loaded when PhpStorm opens the project, so reopen modules that are open.
 
 Usage: configure-phpstorm.py [--check] [--ide-profile <file>] <module directory> [<module directory> ...]
 
@@ -177,6 +180,56 @@ def entry_points() -> str:
     return re.search(r'  <component name="PhpEntryPointsManager">.*?</component>\n', source, re.S).group(0)
 
 
+def js_libraries() -> dict[str, list[str]]:
+    """Returns the files of every library in js-libraries.xml by library name."""
+    source = (TEMPLATE_PATH / "js-libraries.xml").read_text(encoding="utf-8")
+    source = re.sub(r"<!--.*?-->", "", source, flags=re.S)
+    return {
+        match.group(1): re.findall(r'<file path="([^"]+)"', match.group(2))
+        for match in re.finditer(r'<library name="([^"]+)">(.*?)</library>', source, re.S)
+    }
+
+
+def js_library(name: str, files: list[str]) -> str:
+    urls = [f"file://$PROJECT_DIR$/{path}" for path in files]
+    return (
+        '<component name="libraryTable">\n'
+        f'  <library name="{name}" type="javaScript">\n'
+        "    <properties>\n"
+        "      <sourceFilesUrls>\n"
+        + "".join(f'        <item url="{url}" />\n' for url in urls)
+        + "      </sourceFilesUrls>\n"
+        "    </properties>\n"
+        "    <CLASSES>\n"
+        + "".join(f'      <root url="{url}" />\n' for url in urls)
+        + "    </CLASSES>\n"
+        "    <SOURCES />\n"
+        "  </library>\n"
+        "</component>\n"
+    )
+
+
+def apply_js_library_mappings(mappings: str, names: list[str]) -> str:
+    if not mappings:
+        mappings = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n<project version="4">\n'
+            '  <component name="JavaScriptLibraryMappings">\n'
+            '    <file url="PROJECT" libraries="{}" />\n'
+            "  </component>\n</project>\n"
+        )
+    project = re.search(r'<file url="PROJECT" libraries="\{([^}]*)\}" />', mappings)
+    if project is None:
+        return mappings.replace(
+            '<component name="JavaScriptLibraryMappings">',
+            '<component name="JavaScriptLibraryMappings">\n    <file url="PROJECT" libraries="{'
+            + ", ".join(names) + '}" />',
+            1,
+        )
+    libraries = [library.strip() for library in project.group(1).split(",") if library.strip()]
+    libraries += [name for name in names if name not in libraries]
+    return mappings.replace(project.group(0), '<file url="PROJECT" libraries="{' + ", ".join(libraries) + '}" />', 1)
+
+
 def apply_component(misc: str, name: str, component: str) -> str:
     pattern = re.compile(r'[ \t]*<component name="' + name + r'">.*?</component>\n', re.S)
     if pattern.search(misc):
@@ -203,6 +256,7 @@ def main() -> int:
     entries = entry_points()
     index, exclude = module_folders()
     unchecked = unchecked_exceptions()
+    libraries = js_libraries()
     outdated = False
 
     for directory in directories:
@@ -219,6 +273,11 @@ def main() -> int:
             idea / "php.xml": lambda s: apply_unchecked_exceptions(
                 apply_include_path(s or EMPTY_PHP, STUBS_INCLUDE_PATH), unchecked),
         }
+        for name, library_files in libraries.items():
+            files[idea / "libraries" / (re.sub(r"\W", "_", name) + ".xml")] = (
+                lambda s, library=js_library(name, library_files): library
+            )
+        files[idea / "jsLibraryMappings.xml"] = lambda s: apply_js_library_mappings(s, list(libraries))
         for iml in sorted(idea.glob("*.iml")):
             files[iml] = lambda s: apply_folders(s, index, exclude)
         for path, update in files.items():
