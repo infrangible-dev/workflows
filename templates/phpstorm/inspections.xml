@@ -22,4 +22,12 @@
      * (Magento2.Legacy.RestrictedCode), so the quick fix of this inspection would break PHPCS.
     -->
     <inspection_tool class="PhpClassConstantAccessedViaChildClassInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <!--
+     * JavaScript: functions and properties of jQuery widgets (_create, _init, ...), mixins and the components of
+     * x-magento-init are called by jQuery UI and Magento, which PhpStorm does not see: Magento's lib/web is part of
+     * the excluded Composer packages, and Magento calls components by the names in layout XML and templates. Like the
+     * PHP classes (entry points \Infrangible\*), they are used outside of the module. Unused local symbols are still
+     * reported (JSUnusedLocalSymbols).
+    -->
+    <inspection_tool class="JSUnusedGlobalSymbols" enabled="false" level="WARNING" enabled_by_default="false" />
 </inspections>
