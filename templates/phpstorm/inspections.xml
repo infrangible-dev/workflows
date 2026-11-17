@@ -30,4 +30,12 @@
      * reported (JSUnusedLocalSymbols).
     -->
     <inspection_tool class="JSUnusedGlobalSymbols" enabled="false" level="WARNING" enabled_by_default="false" />
+    <!--
+     * LESS: the _module.less and _widgets.less of a module are partials that Magento imports into the styles of the
+     * theme (styles-m.less, styles-l.less), after Magento's UI library and the variables of the theme. The partials
+     * cannot import the library themselves without Magento importing it twice, so its variables (@media-common, ...)
+     * and mixins (.lib-form-field(), ...) are always resolved by name only. PhpStorm finds them in the indexed library
+     * (module-folders.xml), and unknown names are still reported (LessUnresolvedVariable, LessUnresolvedMixin).
+    -->
+    <inspection_tool class="LessResolvedByNameOnly" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
 </inspections>
