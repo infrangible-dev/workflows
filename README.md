@@ -88,6 +88,7 @@ on:
   push:
     branches:
       - main
+      - master
   pull_request:
 
 permissions:
