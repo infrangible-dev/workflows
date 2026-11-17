@@ -38,4 +38,12 @@
      * (module-folders.xml), and unknown names are still reported (LessUnresolvedVariable, LessUnresolvedMixin).
     -->
     <inspection_tool class="LessResolvedByNameOnly" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <!--
+     * Composer: the composer.json of a module lists the requirements for the Magento projects that install it; the
+     * module itself is never installed with Composer and has no composer.lock. Its vendor directory is the one of the
+     * Anodosys development environment, mounted only while the environment runs, so required packages are reported as
+     * not installed after "ads purge" and while PhpStorm still knows an older state of the environment. Whether the
+     * requirements can be installed is checked by CI with every supported Magento version.
+    -->
+    <inspection_tool class="PhpNotInstalledPackagesInspection" enabled="false" level="WARNING" enabled_by_default="false" />
 </inspections>
