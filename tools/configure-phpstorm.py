@@ -99,9 +99,35 @@ def module_folders() -> tuple[list[str], list[str]]:
     return re.findall(r'<index path="([^"]+)"', source), re.findall(r'<exclude path="([^"]+)"', source)
 
 
-def apply_folders(iml: str, index: list[str], exclude: list[str]) -> str:
+def exclude_beside(module: Path, excluded: str, path: str) -> list[str]:
+    """Returns the folders below the excluded folder that are not on the way to the path, sorted."""
+    paths = []
+    parent = excluded
+    for part in Path(path).relative_to(excluded).parts:
+        if not (module / parent).is_dir():
+            return []
+        paths += [f"{parent}/{child.name}" for child in (module / parent).iterdir()
+                  if child.is_dir() and child.name != part]
+        parent = f"{parent}/{part}"
+    return sorted(paths)
+
+
+def apply_folders(iml: str, index: list[str], exclude: list[str], module: Path) -> str:
+    exclude = list(exclude)
     for path in index:
         iml = re.sub(r'[ \t]*<excludeFolder url="file://\$MODULE_DIR\$/' + re.escape(path) + r'" />\n', "", iml)
+        # an excluded parent folder, for example a Composer package that PhpStorm's Composer synchronization excludes,
+        # is replaced by the exclusion of everything beside the path
+        parts = path.split("/")
+        for length in range(len(parts) - 1, 0, -1):
+            parent = "/".join(parts[:length])
+            element = re.compile(r'[ \t]*<excludeFolder url="file://\$MODULE_DIR\$/' + re.escape(parent) + r'" />\n')
+            if element.search(iml):
+                beside = exclude_beside(module, parent, path)
+                if beside:
+                    iml = element.sub("", iml)
+                    exclude += beside
+                break
     for path in exclude:
         element = f'<excludeFolder url="file://$MODULE_DIR$/{path}" />'
         if element in iml:
@@ -279,7 +305,7 @@ def main() -> int:
             )
         files[idea / "jsLibraryMappings.xml"] = lambda s: apply_js_library_mappings(s, list(libraries))
         for iml in sorted(idea.glob("*.iml")):
-            files[iml] = lambda s: apply_folders(s, index, exclude)
+            files[iml] = lambda s: apply_folders(s, index, exclude, directory)
         for path, update in files.items():
             current, line_ending = read_file(path)
             updated = update(current)

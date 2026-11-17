@@ -30,14 +30,4 @@
      * reported (JSUnusedLocalSymbols).
     -->
     <inspection_tool class="JSUnusedGlobalSymbols" enabled="false" level="WARNING" enabled_by_default="false" />
-    <!--
-     * LESS: the _module.less and _widgets.less of a module are partials that Magento imports into the styles of the
-     * theme (styles-m.less, styles-l.less), after Magento's UI library (lib/web/css/source/lib) and the variables of the
-     * theme. Variables such as @media-common and mixins such as .lib-form-field() are defined there, but PhpStorm's
-     * Composer synchronization excludes vendor/magento/magento2-base, and the partials cannot import the library
-     * themselves without Magento importing it twice. Magento's LESS compiler reports undefined variables and mixins
-     * when the styles are deployed.
-    -->
-    <inspection_tool class="LessUnresolvedVariable" enabled="false" level="WARNING" enabled_by_default="false" />
-    <inspection_tool class="LessUnresolvedMixin" enabled="false" level="WARNING" enabled_by_default="false" />
 </inspections>

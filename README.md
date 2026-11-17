@@ -203,6 +203,10 @@ tools/configure-phpstorm.py --check ../m2-*    # only list modules with differen
 Only the listed inspections, folders and the schema catalog are changed, and the line endings of the files are kept; all other settings of the profile stay as they are.
 PhpStorm creates `.idea` when a module is opened for the first time, so run the script again for new modules.
 PhpStorm loads new JavaScript libraries only when it opens a project, so reopen modules that are open.
+Magento's LESS library (`vendor/magento/magento2-base/lib/web/css/source`) is indexed so that PhpStorm resolves its
+variables and mixins in `_module.less`. PhpStorm's Composer synchronization excludes the whole package, and the script
+replaces this exclusion by the exclusion of the other folders of the package. This needs the Magento installation of
+the development environment, so run the script again after `ads rise` and after PhpStorm synchronized Composer packages.
 
 The modules use the IDE profile "Magento", a copy of the PhpStorm default inspections. To write the inspection
 settings into it as well, close PhpStorm (it saves IDE profiles itself) and run:
