@@ -211,6 +211,155 @@ if [[ -n "${qualifiedImport}" ]]; then
   failed=1
 fi
 
+# admin controllers without their own ACL resource
+adminAcl=$(python3 - <<'PYTHON'
+import pathlib, re
+
+# base classes that only allow the resource Magento_Backend::admin, which every admin user has
+OPEN_BASES = {
+    'magento\\backend\\app\\action',
+    'magento\\backend\\app\\abstractaction',
+    'infrangible\\core\\controller\\adminhtml\\ajax',
+    'infrangible\\core\\controller\\adminhtml\\json',
+}
+
+classes = {}
+for path in sorted(pathlib.Path('src').rglob('*.php')):
+    if 'Test' in path.parts:
+        continue
+    source = path.read_text(encoding='utf-8', errors='replace')
+    namespace = re.search(r'^namespace\s+([\w\\]+)\s*;', source, re.M)
+    declaration = re.search(r'^(abstract\s+|final\s+)?class\s+(\w+)(?:\s+extends\s+([\w\\]+))?', source, re.M)
+    if not namespace or not declaration:
+        continue
+    imports = {}
+    for match in re.finditer(r'^use\s+([\w\\]+)(?:\s+as\s+(\w+))?\s*;', source, re.M):
+        full = match.group(1).lstrip('\\')
+        imports[(match.group(2) or full.rsplit('\\', 1)[-1]).lower()] = full
+    parent = declaration.group(3)
+    if parent:
+        if parent.startswith('\\'):
+            parent = parent[1:]
+        elif parent.split('\\', 1)[0].lower() in imports:
+            first, _, rest = parent.partition('\\')
+            parent = imports[first.lower()] + ('\\' + rest if rest else '')
+        else:
+            parent = namespace.group(1) + '\\' + parent
+    name = namespace.group(1) + '\\' + declaration.group(2)
+    classes[name.lower()] = {
+        'path': path,
+        'abstract': (declaration.group(1) or '').strip() == 'abstract',
+        'parent': parent.lower() if parent else None,
+        'acl': bool(re.search(r'const\s+ADMIN_RESOURCE\b|function\s+_isAllowed\s*\(', source)),
+    }
+
+def open_acl(name):
+    """True if the class gets its ACL resource only from a base class that allows every admin user."""
+    seen = set()
+    while name in classes and name not in seen:
+        seen.add(name)
+        if classes[name]['acl']:
+            return False
+        name = classes[name]['parent']
+    return name in OPEN_BASES
+
+for name, info in classes.items():
+    if not info['abstract'] and 'controller' in name.split('\\') and open_acl(name):
+        print(f"{info['path']}")
+PYTHON
+)
+if [[ -n "${adminAcl}" ]]; then
+  echo "${adminAcl}"
+  message="Admin controllers declare their ACL resource (const ADMIN_RESOURCE, or _isAllowed()); without it, every admin user may call them. Use 'Magento_Backend::admin' only on purpose."
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# texts without translation
+translations=$(python3 - <<'PYTHON'
+import csv, pathlib, re
+import xml.etree.ElementTree as ElementTree
+
+OWN = ['cs_CZ', 'da_DK', 'de_DE', 'es_ES', 'fi_FI', 'fr_FR', 'it_IT', 'nb_NO', 'nl_NL', 'nn_NO', 'pl_PL', 'pt_BR',
+       'pt_PT', 'sv_SE', 'uk_UA']
+COPIES = {'de_AT': 'de_DE', 'de_CH': 'de_DE', 'de_LU': 'de_DE', 'fr_BE': 'fr_FR', 'fr_CH': 'fr_FR', 'fr_LU': 'fr_FR',
+          'nl_BE': 'nl_NL', 'it_CH': 'it_IT', 'sv_FI': 'sv_SE'}
+LITERAL = r"""(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")"""
+
+texts = set()
+for path in pathlib.Path('src').rglob('*'):
+    if not path.is_file() or 'Test' in path.parts or 'i18n' in path.parts:
+        continue
+    source = path.read_text(encoding='utf-8', errors='replace')
+    if path.suffix in ('.php', '.phtml'):
+        pattern = r'(?<![\w>$])__\(\s*' + LITERAL
+    elif path.suffix in ('.js', '.html'):
+        if 'Andreas Knollmann' not in source:
+            continue
+        pattern = r'\$t\(\s*' + LITERAL
+    elif path.suffix == '.xml':
+        try:
+            root = ElementTree.fromstring(source)
+        except ElementTree.ParseError:
+            continue
+        for element in root.iter():
+            names = element.get('translate')
+            if not names:
+                continue
+            if names == 'true':
+                if element.text and element.text.strip():
+                    texts.add(element.text.strip())
+                continue
+            for name in names.split():
+                value = element.get(name)
+                if value is None:
+                    child = element.find(name)
+                    value = child.text if child is not None else None
+                if value and value.strip():
+                    texts.add(value.strip())
+        continue
+    else:
+        continue
+    for match in re.finditer(pattern, source):
+        text = match.group(1) if match.group(1) is not None else match.group(2)
+        texts.add(re.sub(r'\\(.)', r'\1', text))
+
+if texts:
+    i18n = pathlib.Path('src/i18n')
+
+    def read(locale):
+        with open(i18n / f'{locale}.csv', encoding='utf-8', newline='') as file:
+            return {row[0]: row[1] for row in csv.reader(file, skipinitialspace=True) if len(row) >= 2}
+
+    for locale in OWN:
+        if not (i18n / f'{locale}.csv').is_file():
+            print(f'src/i18n/{locale}.csv is missing')
+            continue
+        for text in sorted(texts - read(locale).keys()):
+            print(f'src/i18n/{locale}.csv: no translation of "{text}"')
+    for locale, base in COPIES.items():
+        copy, original = i18n / f'{locale}.csv', i18n / f'{base}.csv'
+        if not copy.is_file():
+            print(f'src/i18n/{locale}.csv is missing')
+        elif original.is_file() and copy.read_bytes() != original.read_bytes():
+            print(f'src/i18n/{locale}.csv is not a copy of {base}.csv')
+PYTHON
+)
+if [[ -n "${translations}" ]]; then
+  echo "${translations}"
+  message="Every text of the module is translated into the 15 languages of src/i18n; the 9 country variants are copies (de_AT, de_CH, de_LU of de_DE, fr_BE, fr_CH, fr_LU of fr_FR, nl_BE of nl_NL, it_CH of it_IT, sv_FI of sv_SE)"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # the module that presents Infrangible in the admin
 name=$(python3 -c 'import json; print(json.load(open("composer.json")).get("name", ""))')
 if [[ "${name}" != "infrangible/m2-foundation" ]] && ! python3 -c '

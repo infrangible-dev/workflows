@@ -134,7 +134,16 @@ jobs:
 
       - name: Unit tests
         working-directory: module
-        run: "${MAGENTO_ROOT}/vendor/bin/phpunit -c phpunit.xml"
+        # PHPUnit only reports its own notices and deprecations (for example a mock object without expectations, a
+        # notice since PHPUnit 12) and still exits with 0; they fail the step, because newer versions turn them into
+        # errors
+        run: |
+          set -o pipefail
+          "${MAGENTO_ROOT}/vendor/bin/phpunit" -c phpunit.xml --colors=never | tee "${RUNNER_TEMP}/phpunit.log"
+          if grep -qE '^(OK, but|Tests: .*(PHPUnit (Notices|Deprecations|Warnings)|Notices|Deprecations))' "${RUNNER_TEMP}/phpunit.log"; then
+            echo "::error::PHPUnit reported notices or deprecations, see above"
+            exit 1
+          fi
 
       - name: Dependencies in composer.json
         if: matrix.phpcs

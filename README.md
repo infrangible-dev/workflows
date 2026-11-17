@@ -38,7 +38,14 @@ On every push and pull request, for each combination of the matrix:
    - imported classes are written with their short name (`RuntimeException` instead of `\RuntimeException` after
      `use RuntimeException;`), PhpStorm reports the qualifier as unnecessary
    - every module requires `infrangible/m2-foundation` in `composer.json`, which presents Infrangible in the Magento
-     admin, also when its code does not use it (except m2-foundation itself); all checked with
+     admin, also when its code does not use it (except m2-foundation itself)
+   - admin controllers declare their ACL resource (`const ADMIN_RESOURCE` or `_isAllowed()`) when they extend a base
+     class that only checks `Magento_Backend::admin` (Magento's `Backend\App\Action`, the `Json` and `Ajax`
+     controllers of m2-core), which every admin user has; `Magento_Backend::admin` itself is only declared on purpose
+   - every text of the module (`__('…')` in PHP and templates, `$t('…')` in the module's JavaScript, everything marked
+     with `translate` in XML) is translated in `src/i18n` into the 15 languages cs_CZ, da_DK, de_DE, es_ES, fi_FI,
+     fr_FR, it_IT, nb_NO, nl_NL, nn_NO, pl_PL, pt_BR, pt_PT, sv_SE and uk_UA; the country variants de_AT, de_CH,
+     de_LU, fr_BE, fr_CH, fr_LU, nl_BE, it_CH and sv_FI are copies; all checked with
      `tools/check-code-conventions.sh <module>`, which can also be run locally
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
@@ -60,8 +67,11 @@ On every push and pull request, for each combination of the matrix:
      `tools/check-dead-code.sh`; `phpstan/dead-code/MagentoUsageProvider.php` marks what Magento calls because of the
      XML configuration (plugins in `di.xml`, `crontab.xml`, `events.xml`, `webapi.xml`, layout actions); for now
      findings are reported as warnings and do not fail the build
-3. PHPStan with the `phpstan.neon` of the module.
-4. PHPUnit with the `phpunit.xml` of the module.
+3. PHPStan with the `phpstan.neon` of the module. The template checks level 9, the `@throws` tags as PhpStorm
+   expects them and typed properties that are read before they are set (`setUp()` of tests and Magento's
+   `_construct()` count as constructors).
+4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
+   mock object without expectations (PHPUnit 12, use a stub instead).
 
 The path of the Magento installation is passed to the module configuration in the environment variable
 `MAGENTO_ROOT`.
