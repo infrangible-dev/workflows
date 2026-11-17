@@ -36,7 +36,9 @@ On every push and pull request, for each combination of the matrix:
    - methods that return nothing declare `@return void` in their docblock, PhpStorm reports another return type as
      "Missing 'return' statement"
    - imported classes are written with their short name (`RuntimeException` instead of `\RuntimeException` after
-     `use RuntimeException;`), PhpStorm reports the qualifier as unnecessary; all checked with
+     `use RuntimeException;`), PhpStorm reports the qualifier as unnecessary
+   - every module requires `infrangible/m2-foundation` in `composer.json`, which presents Infrangible in the Magento
+     admin, also when its code does not use it (except m2-foundation itself); all checked with
      `tools/check-code-conventions.sh <module>`, which can also be run locally
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through

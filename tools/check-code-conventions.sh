@@ -25,6 +25,9 @@
 # Classes that are imported with "use" are written with their short name; PhpStorm reports "\\RuntimeException" after
 # "use RuntimeException;" as "Qualifier is unnecessary and can be removed".
 #
+# Every module requires infrangible/m2-foundation in its composer.json, the module that presents Infrangible in the
+# Magento admin, also when the code of the module does not use it. m2-foundation itself is the exception.
+#
 # Usage: tools/check-code-conventions.sh <module directory>
 
 set -u
@@ -200,6 +203,20 @@ PYTHON
 if [[ -n "${qualifiedImport}" ]]; then
   echo "${qualifiedImport}"
   message="Use the short name of imported classes: 'RuntimeException' instead of '\\RuntimeException' after 'use RuntimeException;'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# the module that presents Infrangible in the admin
+name=$(python3 -c 'import json; print(json.load(open("composer.json")).get("name", ""))')
+if [[ "${name}" != "infrangible/m2-foundation" ]] && ! python3 -c '
+import json, sys
+sys.exit(0 if "infrangible/m2-foundation" in json.load(open("composer.json")).get("require", {}) else 1)'; then
+  message="Every module requires infrangible/m2-foundation in composer.json"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
