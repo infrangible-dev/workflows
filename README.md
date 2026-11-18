@@ -65,11 +65,9 @@ On every push and pull request, for each combination of the matrix:
      dependencies that the module only loads when they are installed (never in constructors, use
      `Infrangible\Core\Helper\Instances::createInstance()` or `getSharedInstance()` instead); locally, install the
      checker with `cosyses ComposerRequireChecker 4.24` (PHP 8.4 or newer)
-   - no dead code (unused methods, constants and properties), checked with
-     [shipmonk/dead-code-detector](https://github.com/shipmonk-rnd/dead-code-detector) and PHPStan 2 through
-     `tools/check-dead-code.sh`; `phpstan/dead-code/MagentoUsageProvider.php` marks what Magento calls because of the
-     XML configuration (plugins in `di.xml`, `crontab.xml`, `events.xml`, `webapi.xml`, layout actions); for now
-     findings are reported as warnings and do not fail the build
+   - no dead code: PHPStan (level 4 and higher) reports unused private methods, properties and constants; public and
+     protected members are not checked, they are the API of the module for other modules and for Magento, which calls
+     them through its XML configuration
    - no unexplained deprecated code: every deprecated class, method, function, constant or property that the module
      uses (found with [phpstan/phpstan-deprecation-rules](https://github.com/phpstan/phpstan-deprecation-rules) and
      PHPStan 2 through `tools/check-deprecations.sh`) is replaced, or, if it cannot be avoided (for example a
@@ -161,14 +159,6 @@ tools/sync-module-config.sh --check ../m2-*    # only list modules with missing 
 Directories without `composer.json` and `src` are skipped.
 
 ## Tools
-
-`tools/check-dead-code.sh <tool directory> <module directory> <Magento directory>` runs the dead code check locally.
-The tool directory needs PHPStan 2 and the detector:
-
-```bash
-composer require --working-dir /tmp/dead-code "phpstan/phpstan:^2.1.41" shipmonk/dead-code-detector
-tools/check-dead-code.sh /tmp/dead-code /var/www/module /var/www/magento
-```
 
 `tools/check-deprecations.sh <tool directory> <module directory> <Magento directory>` runs the check of deprecated
 code locally. The tool directory needs PHPStan 2 and the deprecation rules, `cosyses PHPStanDeprecationRules 2.0`

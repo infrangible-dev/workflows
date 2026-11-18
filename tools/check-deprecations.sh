@@ -44,8 +44,7 @@ done
 workDirectory=$(mktemp -d)
 trap 'rm -rf "${workDirectory:?}"' EXIT
 
-# Magento comes with PHPStan 1, the rules need PHPStan 2; the autoloader of Magento is loaded before PHPStan starts, as
-# in check-dead-code.sh
+# Magento comes with PHPStan 1, the rules need PHPStan 2; the autoloader of Magento is loaded before PHPStan starts
 cat > "${workDirectory}/prepend.php" << EOF
 <?php
 require '${magentoDirectory}/vendor/autoload.php';
