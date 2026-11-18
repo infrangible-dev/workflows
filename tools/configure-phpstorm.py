@@ -13,6 +13,8 @@
     - unchecked-exceptions.xml: exceptions that need no @throws tag (.idea/php.xml, merged with existing ones)
     - js-libraries.xml: JavaScript libraries (.idea/libraries/<name>.xml), assigned to the project
       (.idea/jsLibraryMappings.xml, merged with libraries assigned there already)
+    - dictionary.xml: words of Magento for the spell checker, for example from class names like
+      ReinitableConfigInterface (.idea/dictionaries/magento.xml; the dictionary "project" of the module stays)
     - stubs: declarations for PhpStorm only, added as include path (.idea/php.xml), relative to the module, so the
       workflows repository has to be next to the modules
 
@@ -81,6 +83,10 @@ def inspection_tools() -> list[tuple[str, str]]:
         element = match.group(0)
         tools.append((re.search(r'class="([^"]+)"', element).group(1), element))
     return tools
+
+
+def dictionary() -> str:
+    return (TEMPLATE_PATH / "dictionary.xml").read_text(encoding="utf-8")
 
 
 def profile_settings() -> str:
@@ -278,6 +284,7 @@ def main() -> int:
 
     tools = inspection_tools()
     settings = profile_settings()
+    words = dictionary()
     resources = project_resources()
     entries = entry_points()
     index, exclude = module_folders()
@@ -294,6 +301,7 @@ def main() -> int:
         files = {
             idea / "inspectionProfiles" / "Project_Default.xml": lambda s: apply_inspections(s or EMPTY_PROFILE, tools),
             idea / "inspectionProfiles" / "profiles_settings.xml": lambda s: settings,
+            idea / "dictionaries" / "magento.xml": lambda s: words,
             idea / "misc.xml": lambda s: apply_component(
                 apply_component(s or EMPTY_MISC, "PhpEntryPointsManager", entries), "ProjectResources", resources),
             idea / "php.xml": lambda s: apply_unchecked_exceptions(
