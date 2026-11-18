@@ -76,7 +76,9 @@ On every push and pull request, for each combination of the matrix:
      constructor argument that a Magento parent class requires, or a filter callback of Magento's grid that receives
      a deprecated column), suppressed for PhpStorm with a reason:
      `@noinspection PhpDeprecationInspection <why it is needed>` in the doc comment of the method or class, or in a
-     comment before the statement; directly after `<?php` it covers the whole file. Suppressions without reason fail,
+     comment before the statement; directly after `<?php` it covers the whole file, which a file needs that imports a
+     deprecated class (PhpStorm reports the `use` statement, the check looks up the doc comment of the imported class
+     through Magento's autoloader). Suppressions without reason fail,
      suppressions that cover no finding are reported as warnings
 3. PHPStan with the `phpstan.neon` of the module. The template checks level 9, the `@throws` tags as PhpStorm
    expects them and typed properties that are read before they are set (`setUp()` of tests and Magento's

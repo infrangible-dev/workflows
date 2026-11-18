@@ -8,7 +8,8 @@
 #   * @noinspection PhpDeprecationInspection Magento's grid, which the parent class extends, needs the backend helper.
 #
 # The suppression covers the declaration or statement that follows it, or the whole file directly after "<?php", see
-# check-deprecations.php.
+# check-deprecations.php. Imports ("use") of deprecated classes count as well, as in PhpStorm; a file that imports one
+# needs the suppression for the whole file.
 #
 # Usage:
 #   check-deprecations.sh <tool directory> <module directory> <Magento directory>
@@ -76,4 +77,4 @@ php -d "auto_prepend_file=${workDirectory}/prepend.php" -d memory_limit=-1 \
 # lists every analysed file before the result, only the result is of interest
 grep '^{' "${workDirectory}/result.txt" > "${workDirectory}/result.json" || cat "${workDirectory}/result.txt" >&2
 
-php "${scriptPath}/check-deprecations.php" "${moduleDirectory}" "${workDirectory}/result.json"
+php "${scriptPath}/check-deprecations.php" "${moduleDirectory}" "${workDirectory}/result.json" "${magentoDirectory}"

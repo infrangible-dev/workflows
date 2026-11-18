@@ -4,7 +4,7 @@
  * Compares the deprecated code that PHPStan found (phpstan/phpstan-deprecation-rules, JSON output) with the
  * suppressions of PhpStorm's inspection in the module, see check-deprecations.sh.
  *
- * Usage: php check-deprecations.php <module directory> <PHPStan JSON result>
+ * Usage: php check-deprecations.php <module directory> <PHPStan JSON result> [<Magento directory>]
  *
  * A suppression is a comment with "@noinspection PhpDeprecationInspection <reason>". It covers:
  *   - the whole file, if it directly follows the opening tag of the file
@@ -12,7 +12,9 @@
  *     or up to the semicolon of a statement or property
  *
  * Deprecated classes count where the module names them (types, new, extends, implements), not where it uses the members
- * of an object of such a class that are not deprecated themselves, as in PhpStorm.
+ * of an object of such a class that are not deprecated themselves, as in PhpStorm. PhpStorm also reports the import of
+ * a deprecated class ("use"), which PHPStan does not: with the Magento directory, the imports are checked as well, by
+ * the doc comment of the file of the class that Composer's autoloader finds (without loading the class).
  *
  * Fails for deprecated code that no suppression covers and for suppressions without reason. Suppressions that cover no
  * deprecated code are reported as warnings, PhpStorm may know deprecations that PHPStan does not find.
@@ -20,8 +22,8 @@
 
 declare(strict_types=1);
 
-if ($argc !== 3) {
-    fwrite(STDERR, "Usage: php check-deprecations.php <module directory> <PHPStan JSON result>\n");
+if ($argc !== 3 && $argc !== 4) {
+    fwrite(STDERR, "Usage: php check-deprecations.php <module directory> <PHPStan JSON result> [<Magento directory>]\n");
     exit(1);
 }
 
@@ -139,14 +141,108 @@ function findScopeEnd(array $tokens, int $index, int $line): int
     return $line;
 }
 
-$failures = 0;
-$suppressionsByFile = [];
+/**
+ * Returns the classes, interfaces and traits that a file imports, with the line of the import.
+ *
+ * @return array<int, array{0: string, 1: int}>
+ */
+function findImports(string $code): array
+{
+    $tokens = token_get_all($code);
+    $imports = [];
+    $count = count($tokens);
+
+    for ($index = 0; $index < $count; $index++) {
+        $token = $tokens[ $index ];
+
+        // imports are written before the class, use inside a class imports traits, in a closure variables
+        if (is_array($token) && in_array($token[ 0 ], [T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM], true)) {
+            break;
+        }
+
+        if (! is_array($token) || $token[ 0 ] !== T_USE) {
+            continue;
+        }
+
+        $line = $token[ 2 ];
+        $name = '';
+
+        for ($index++; $index < $count; $index++) {
+            $part = $tokens[ $index ];
+
+            if ($part === ';' || $part === ',' || (is_array($part) && $part[ 0 ] === T_AS)) {
+                break;
+            }
+            if ($part === '{' || (is_array($part) && in_array($part[ 0 ], [T_FUNCTION, T_CONST], true))) {
+                // group imports and imports of functions or constants are not checked
+                $name = '';
+                break;
+            }
+            if (is_array($part) && in_array($part[ 0 ], [T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_STRING], true)) {
+                $name .= $part[ 1 ];
+            }
+        }
+
+        if ($name !== '') {
+            $imports[] = [ltrim($name, '\\'), $line];
+        }
+    }
+
+    return $imports;
+}
+
+/**
+ * Tells whether the doc comment of a class, interface or trait declares it deprecated, read from its file.
+ */
+function isDeprecatedClass(string $className, ?object $classLoader): bool
+{
+    static $cache = [];
+
+    if ($classLoader === null || ! method_exists($classLoader, 'findFile')) {
+        return false;
+    }
+
+    if (! array_key_exists($className, $cache)) {
+        $cache[ $className ] = false;
+        $file = $classLoader->findFile($className);
+
+        if (is_string($file) && is_file($file)) {
+            $shortName = substr((string)strrchr('\\' . $className, '\\'), 1);
+            $docComment = null;
+
+            foreach (token_get_all((string)file_get_contents($file)) as $token) {
+                if (! is_array($token)) {
+                    continue;
+                }
+                if ($token[ 0 ] === T_DOC_COMMENT) {
+                    $docComment = $token[ 1 ];
+                } elseif (in_array($token[ 0 ], [T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM], true)) {
+                    // the doc comment directly before the declaration (attributes and modifiers in between)
+                    $cache[ $className ] = $docComment !== null && str_contains($docComment, '@deprecated');
+                    break;
+                } elseif (! in_array($token[ 0 ], [T_WHITESPACE, T_ABSTRACT, T_FINAL, T_READONLY, T_COMMENT], true)
+                    && $token[ 1 ] !== $shortName) {
+                    $docComment = null;
+                }
+            }
+        }
+    }
+
+    return $cache[ $className ];
+}
+
+$classLoader = null;
+
+if (isset($argv[ 3 ])) {
+    $classLoader = require rtrim($argv[ 3 ], '/') . '/vendor/autoload.php';
+}
+
+// deprecated code per file: line and message
+$findings = [];
 
 foreach ($result[ 'files' ] ?? [] as $file => $fileResult) {
     // code of a parent class or trait is analysed in the context of each class: "<path> (in context of class X)"
     $file = (string)preg_replace('/ \(in context of .*\)$/', '', (string)$file);
-    $suppressionsByFile[ $file ] ??= findSuppressions((string)file_get_contents($file));
-    $relativeFile = str_replace($moduleDirectory . '/', '', $file);
 
     foreach ($fileResult[ 'messages' ] ?? [] as $message) {
         $identifier = (string)($message[ 'identifier' ] ?? '');
@@ -162,7 +258,40 @@ foreach ($result[ 'files' ] ?? [] as $file => $fileResult) {
             continue;
         }
 
-        $line = (int)($message[ 'line' ] ?? 0);
+        $findings[ $file ][] = [
+            (int)($message[ 'line' ] ?? 0),
+            preg_replace('/\s+/', ' ', trim((string)($message[ 'message' ] ?? '')))
+        ];
+    }
+}
+
+$moduleFiles = [];
+$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($moduleDirectory . '/src'));
+
+foreach ($iterator as $fileInfo) {
+    if ($fileInfo->isFile() && in_array($fileInfo->getExtension(), ['php', 'phtml'], true)) {
+        $moduleFiles[] = $fileInfo->getPathname();
+    }
+}
+
+if ($classLoader !== null) {
+    foreach ($moduleFiles as $file) {
+        foreach (findImports((string)file_get_contents($file)) as [$className, $line]) {
+            if (isDeprecatedClass($className, $classLoader)) {
+                $findings[ $file ][] = [$line, sprintf('Import of deprecated class %s.', $className)];
+            }
+        }
+    }
+}
+
+$failures = 0;
+$suppressionsByFile = [];
+
+foreach ($findings as $file => $fileFindings) {
+    $suppressionsByFile[ $file ] ??= findSuppressions((string)file_get_contents($file));
+    $relativeFile = str_replace($moduleDirectory . '/', '', $file);
+
+    foreach ($fileFindings as [$line, $message]) {
         $covered = false;
 
         foreach ($suppressionsByFile[ $file ] as &$suppression) {
@@ -179,7 +308,7 @@ foreach ($result[ 'files' ] ?? [] as $file => $fileResult) {
                 "::error file=%s,line=%d::%s Replace it, or suppress it with: @noinspection PhpDeprecationInspection <reason>%s",
                 $relativeFile,
                 $line,
-                preg_replace('/\s+/', ' ', trim((string)($message[ 'message' ] ?? ''))),
+                $message,
                 PHP_EOL
             );
         }
@@ -187,14 +316,7 @@ foreach ($result[ 'files' ] ?? [] as $file => $fileResult) {
 }
 
 // suppressions in files without findings
-$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($moduleDirectory . '/src'));
-
-foreach ($iterator as $fileInfo) {
-    if (! $fileInfo->isFile() || ! in_array($fileInfo->getExtension(), ['php', 'phtml'], true)) {
-        continue;
-    }
-
-    $file = $fileInfo->getPathname();
+foreach ($moduleFiles as $file) {
     $suppressionsByFile[ $file ] ??= findSuppressions((string)file_get_contents($file));
 }
 
