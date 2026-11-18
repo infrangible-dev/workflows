@@ -10,6 +10,9 @@ declare(strict_types=1);
  * versions do not. Modules declare it as 2.4.8 needs it, so with older versions the tag is reported as too wide; the
  * check stays strict with 2.4.8 and newer, which run the same code.
  *
+ * Before Magento 2.4.9 (magento/framework 103.0.9), Escaper::escapeHtml() declares string|array as result, also for a
+ * string; phpstan.escaper.stub declares the types of 2.4.9.
+ *
  * @author      Andreas Knollmann
  * @copyright   Copyright (c) 2014-2026 Softwareentwicklung Andreas Knollmann
  * @license     http://www.opensource.org/licenses/mit-license.php MIT
@@ -31,4 +34,10 @@ if ($frameworkVersion !== '' && version_compare($frameworkVersion, '103.0.8', '<
     ];
 }
 
-return ['parameters' => ['ignoreErrors' => $ignoreErrors]];
+$stubFiles = [];
+
+if ($frameworkVersion !== '' && version_compare($frameworkVersion, '103.0.9', '<')) {
+    $stubFiles[] = __DIR__ . '/phpstan.escaper.stub';
+}
+
+return ['parameters' => ['ignoreErrors' => $ignoreErrors, 'stubFiles' => $stubFiles]];

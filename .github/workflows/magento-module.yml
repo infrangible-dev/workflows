@@ -4,6 +4,7 @@
 #   - coding standard (PHPCS with the phpcs.xml of the module), with the newest Magento version
 #   - syntax of PHP 8.2 (Rector), with the newest Magento version
 #   - static analysis (PHPStan with the phpstan.neon of the module), with every Magento version
+#   - deprecated code, replaced or suppressed with a reason (tools/check-deprecations.sh), with the newest Magento version
 #   - unit tests (PHPUnit with the phpunit.xml of the module), with every Magento version
 #
 # Release (on a push to the default branch, only if all checks passed):
@@ -127,6 +128,16 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/rector"
           composer require --no-interaction --no-progress --working-dir "${RUNNER_TEMP}/rector" "rector/rector:~2.8.0"
           workflows/tools/check-php-syntax.sh module "${MAGENTO_ROOT}" "${RUNNER_TEMP}/rector/vendor/bin/rector"
+
+      - name: Deprecated code
+        if: matrix.phpcs
+        run: |
+          # deprecated code has to be replaced or suppressed for PhpStorm with a reason, see the script; the deprecation
+          # rules need PHPStan 2, Magento comes with PHPStan 1
+          mkdir -p "${RUNNER_TEMP}/deprecations"
+          composer require --no-interaction --no-progress --working-dir "${RUNNER_TEMP}/deprecations" \
+            "phpstan/phpstan-deprecation-rules:~2.0.5"
+          workflows/tools/check-deprecations.sh "${RUNNER_TEMP}/deprecations" module "${MAGENTO_ROOT}"
 
       - name: Static analysis
         working-directory: module

@@ -28,6 +28,10 @@
 # Every module requires infrangible/m2-foundation in its composer.json, the module that presents Infrangible in the
 # Magento admin, also when the code of the module does not use it. m2-foundation itself is the exception.
 #
+# Blocks and templates escape with Magento's escaper ("$this->_escaper->escapeHtml()" in blocks, "$escaper->escapeHtml()"
+# in templates); the escape methods of the blocks are deprecated since Magento 2.4. tools/check-deprecations.sh finds
+# them in classes too, but in templates only if "$block" has a declared type.
+#
 # Usage: tools/check-code-conventions.sh <module directory>
 
 set -u
@@ -55,6 +59,9 @@ check() {
 check 'mixed\[\]' "Use '@param array \$x' with '@phpstan-param array<string, mixed> \$x' instead of 'mixed[]'"
 check 'array<mixed>' "Use 'array<string, mixed>' or 'array<int, mixed>' (or a more precise type) instead of 'array<mixed>'"
 check 'array<mixed\s*,' "Use 'array<int|string, mixed>' (or a more precise key type) instead of 'array<mixed, ...>'"
+# shellcheck disable=SC2016 # the pattern contains $, not a variable
+check '\$(this|block)->escape(Html|HtmlAttr|Js|Css|Url|XssInUrl|Quote|JsQuote)\(' \
+  "Escape with Magento's escaper (\$this->_escaper in blocks, \$escaper in templates), the escape methods of blocks are deprecated"
 
 # catch blocks whose exception variable is not used
 unusedCatch=$(python3 - <<'PYTHON'

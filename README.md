@@ -35,6 +35,8 @@ On every push and pull request, for each combination of the matrix:
      checked, not bundled libraries
    - methods that return nothing declare `@return void` in their docblock, PhpStorm reports another return type as
      "Missing 'return' statement"
+   - escaping with Magento's escaper (`$this->_escaper->escapeHtml()` in blocks, `$escaper->escapeHtml()` in
+     templates) instead of the deprecated escape methods of blocks (`$this->escapeHtml()`, `$block->escapeUrl()`, …)
    - imported classes are written with their short name (`RuntimeException` instead of `\RuntimeException` after
      `use RuntimeException;`), PhpStorm reports the qualifier as unnecessary
    - every module requires `infrangible/m2-foundation` in `composer.json`, which presents Infrangible in the Magento
@@ -68,11 +70,20 @@ On every push and pull request, for each combination of the matrix:
      `tools/check-dead-code.sh`; `phpstan/dead-code/MagentoUsageProvider.php` marks what Magento calls because of the
      XML configuration (plugins in `di.xml`, `crontab.xml`, `events.xml`, `webapi.xml`, layout actions); for now
      findings are reported as warnings and do not fail the build
+   - no unexplained deprecated code: every deprecated class, method, function, constant or property that the module
+     uses (found with [phpstan/phpstan-deprecation-rules](https://github.com/phpstan/phpstan-deprecation-rules) and
+     PHPStan 2 through `tools/check-deprecations.sh`) is replaced, or, if it cannot be avoided (for example a
+     constructor argument that a Magento parent class requires, or a filter callback of Magento's grid that receives
+     a deprecated column), suppressed for PhpStorm with a reason:
+     `@noinspection PhpDeprecationInspection <why it is needed>` in the doc comment of the method or class, or in a
+     comment before the statement; directly after `<?php` it covers the whole file. Suppressions without reason fail,
+     suppressions that cover no finding are reported as warnings
 3. PHPStan with the `phpstan.neon` of the module. The template checks level 9, the `@throws` tags as PhpStorm
    expects them and typed properties that are read before they are set (`setUp()` of tests and Magento's
    `_construct()` count as constructors). `phpstan.versions.php` adds what depends on the Magento version of the
    installation: before 2.4.8, `AbstractModel::_init()` and `load()` do not declare their `LocalizedException`, so a
-   tag that 2.4.8 needs is not reported as too wide there.
+   tag that 2.4.8 needs is not reported as too wide there; before 2.4.9, `Escaper::escapeHtml()` declares
+   `string|array` as result also for a string, `phpstan.escaper.stub` declares the types of 2.4.9.
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead).
 
@@ -153,6 +164,15 @@ The tool directory needs PHPStan 2 and the detector:
 ```bash
 composer require --working-dir /tmp/dead-code "phpstan/phpstan:^2.1.41" shipmonk/dead-code-detector
 tools/check-dead-code.sh /tmp/dead-code /var/www/module /var/www/magento
+```
+
+`tools/check-deprecations.sh <tool directory> <module directory> <Magento directory>` runs the check of deprecated
+code locally. The tool directory needs PHPStan 2 and the deprecation rules, `cosyses PHPStanDeprecationRules 2.0`
+installs them:
+
+```bash
+cosyses PHPStanDeprecationRules 2.0
+tools/check-deprecations.sh /usr/local/lib/composer-tools/phpstan-deprecation-rules /var/www/module /var/www/magento
 ```
 
 `tools/check-composer-requirements.sh <composer-require-checker> <module directory>` runs the dependency check of the
