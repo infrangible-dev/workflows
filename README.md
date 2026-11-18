@@ -70,7 +70,9 @@ On every push and pull request, for each combination of the matrix:
      findings are reported as warnings and do not fail the build
 3. PHPStan with the `phpstan.neon` of the module. The template checks level 9, the `@throws` tags as PhpStorm
    expects them and typed properties that are read before they are set (`setUp()` of tests and Magento's
-   `_construct()` count as constructors).
+   `_construct()` count as constructors). `phpstan.versions.php` adds what depends on the Magento version of the
+   installation: before 2.4.8, `AbstractModel::_init()` and `load()` do not declare their `LocalizedException`, so a
+   tag that 2.4.8 needs is not reported as too wide there.
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead).
 
