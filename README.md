@@ -87,7 +87,8 @@ On every push and pull request, for each combination of the matrix:
    `@throws ReflectionException` for reflection on classes they name themselves, which PhpStorm requires and PHPStan
    knows cannot be thrown.
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
-   mock object without expectations (PHPUnit 12, use a stub instead).
+   mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
+   only JavaScript and styles) skip the step.
 
 The path of the Magento installation is passed to the module configuration in the environment variable
 `MAGENTO_ROOT`.

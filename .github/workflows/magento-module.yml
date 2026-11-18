@@ -150,6 +150,11 @@ jobs:
         # errors
         run: |
           set -o pipefail
+          # modules without PHP logic (for example only JavaScript and styles) have no unit tests
+          if [[ ! -d src/Test/Unit ]]; then
+            echo "::notice::No unit tests in src/Test/Unit"
+            exit 0
+          fi
           "${MAGENTO_ROOT}/vendor/bin/phpunit" -c phpunit.xml --colors=never | tee "${RUNNER_TEMP}/phpunit.log"
           if grep -qE '^(OK, but|Tests: .*(PHPUnit (Notices|Deprecations|Warnings)|Notices|Deprecations))' "${RUNNER_TEMP}/phpunit.log"; then
             echo "::error::PHPUnit reported notices or deprecations, see above"
