@@ -56,7 +56,9 @@ function findSuppressions(string $code): array
             continue;
         }
 
-        $reason = trim(preg_replace('#\*/\s*$#', '', $matches[ 1 ]) ?? '', " \t*,");
+        // without the end of the comment and further inspections of the list ("PhpDeprecationInspection, PhpFoo")
+        $reason = preg_replace(['#\*/\s*$#', '#^(\s*,\s*\w+)+#'], '', $matches[ 1 ]) ?? '';
+        $reason = trim($reason, " \t*,");
         $startLine = $token[ 2 ];
 
         $suppressions[] = [
@@ -141,8 +143,9 @@ $failures = 0;
 $suppressionsByFile = [];
 
 foreach ($result[ 'files' ] ?? [] as $file => $fileResult) {
-    $code = (string)file_get_contents($file);
-    $suppressionsByFile[ $file ] = findSuppressions($code);
+    // code of a parent class or trait is analysed in the context of each class: "<path> (in context of class X)"
+    $file = (string)preg_replace('/ \(in context of .*\)$/', '', (string)$file);
+    $suppressionsByFile[ $file ] ??= findSuppressions((string)file_get_contents($file));
     $relativeFile = str_replace($moduleDirectory . '/', '', $file);
 
     foreach ($fileResult[ 'messages' ] ?? [] as $message) {
