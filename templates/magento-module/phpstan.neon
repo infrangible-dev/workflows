@@ -42,3 +42,9 @@ parameters:
         -
             message: '#^Attribute class PHPUnit\\Framework\\Attributes\\(DataProvider|AllowMockObjectsWithoutExpectations) does not exist\.$#'
             reportUnmatched: false
+        # tests that use reflection on classes they name themselves: PhpStorm requires the ReflectionException in
+        # @throws, PHPStan knows that it cannot be thrown for an existing class; production code stays strict
+        -
+            message: '#^Method .+ has ReflectionException in PHPDoc @throws tag but it''s not thrown\.$#'
+            path: src/Test/*
+            reportUnmatched: false

@@ -83,7 +83,9 @@ On every push and pull request, for each combination of the matrix:
    `_construct()` count as constructors). `phpstan.versions.php` adds what depends on the Magento version of the
    installation: before 2.4.8, `AbstractModel::_init()` and `load()` do not declare their `LocalizedException`, so a
    tag that 2.4.8 needs is not reported as too wide there; before 2.4.9, `Escaper::escapeHtml()` declares
-   `string|array` as result also for a string, `phpstan.escaper.stub` declares the types of 2.4.9.
+   `string|array` as result also for a string, `phpstan.escaper.stub` declares the types of 2.4.9. Tests may declare
+   `@throws ReflectionException` for reflection on classes they name themselves, which PhpStorm requires and PHPStan
+   knows cannot be thrown.
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead).
 
