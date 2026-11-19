@@ -133,7 +133,7 @@ The matrix can be changed with the input `matrix` (JSON list of objects with `ma
 
 The module needs `phpcs.xml`, `phpstan.neon` and `phpunit.xml` in its root directory, and the PHPStan and PHPUnit
 configuration have to load the Magento installation from `MAGENTO_ROOT` (see `phpstan.bootstrap.php` and
-`phpunit.bootstrap.php` in [m2-foundation](https://github.com/infrangible-dev/m2-foundation)).
+`phpunit.bootstrap.php` in [m2-foundation](https://www.infrangible.dev/modules/foundation)).
 
 ## Shared module configuration
 
