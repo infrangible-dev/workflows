@@ -1,9 +1,10 @@
 <!--
  * XML schema catalog (urn:magento:...) for .idea/misc.xml, generated with
  * bin/magento dev:urn-catalog:generate in Magento 2.4.8 and relative to the vendor directory of the module.
+ * urn:magento:framework:ObjectManager/etc/config.xsd points to a corrected copy in schemas, see there.
 -->
   <component name="ProjectResources">
-    <resource url="urn:magento:framework:ObjectManager/etc/config.xsd" location="$PROJECT_DIR$/vendor/magento/framework/ObjectManager/etc/config.xsd"/>
+    <resource url="urn:magento:framework:ObjectManager/etc/config.xsd" location="$PROJECT_DIR$/../workflows/templates/phpstorm/schemas/ObjectManager/config.xsd"/>
     <resource url="urn:magento:framework:Module/etc/module.xsd" location="$PROJECT_DIR$/vendor/magento/framework/Module/etc/module.xsd"/>
     <resource url="urn:magento:module:Magento_Config:etc/system_file.xsd" location="$PROJECT_DIR$/vendor/magento/module-config/etc/system_file.xsd"/>
     <resource url="urn:magento:framework:Config/etc/view.xsd" location="$PROJECT_DIR$/vendor/magento/framework/Config/etc/view.xsd"/>

@@ -7,6 +7,7 @@
       (.idea/inspectionProfiles/Project_Default.xml) and, with --ide-profile, into the IDE profile; each
       inspection_tool element replaces the one of the same class
     - project-resources.xml: XML schema catalog for urn:magento:... (component ProjectResources in .idea/misc.xml)
+      with corrected copies of Magento schemas in schemas, relative to the module like the stubs
     - entry-points.xml: class patterns the inspection "Unused declaration" treats as used (component
       PhpEntryPointsManager in .idea/misc.xml)
     - module-folders.xml: folders that are indexed or excluded (.idea/<module>.iml)

@@ -220,6 +220,7 @@ tools/add-return-tags.py ../m2-core/src
 | `inspections.xml`        | `.idea/inspectionProfiles/Project_Default.xml`     | inspections that are changed, with reasons  |
 |                          | and the IDE profile (`--ide-profile`)              |                                             |
 | `project-resources.xml`  | `.idea/misc.xml` (component `ProjectResources`)    | catalog of the `urn:magento:...` schemas    |
+| `schemas/`               | locations in the schema catalog                    | corrected copies of Magento schemas (see below) |
 | `entry-points.xml`       | `.idea/misc.xml` (`PhpEntryPointsManager`)         | `\Infrangible\*` classes are not unused     |
 | `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude                 |
 | `stubs/`                 | include path in `.idea/php.xml`                    | classes for PhpStorm only (see below)       |
@@ -258,5 +259,12 @@ example attributes of PHPUnit 12. PhpStorm finds them through the include path
 The file is never loaded by PHP. `stubs/google-maps.d.ts` declares the parts of the Google Maps JavaScript API that
 the modules use (Google loads the API at runtime); the JavaScript library `google-maps` of `js-libraries.xml` points to
 it, so PhpStorm does not take `google.maps.Map` for the built-in `Map` of JavaScript.
+
+
+`schemas/` holds copies of Magento schemas that PhpStorm cannot load, mapped in `project-resources.xml` to
+`$PROJECT_DIR$/../workflows/templates/phpstorm/schemas` instead of the `vendor` folder. Magento's
+`ObjectManager/etc/config.xsd` (all `di.xml` files) redefines the type `string` without extending it, which Xerces
+rejects ("'extension' does not have a 'base' attribute that refers to the redefined element"), while libxml in Magento
+accepts it; the copy extends `string` itself.
 
 To change an inspection for all modules, add it to `inspections.xml` with a comment why, and run the script.
