@@ -26,6 +26,6 @@
      * new google.maps.Map(element, options) as invalid. Relative to the module like the PHP stubs.
     -->
     <library name="google-maps">
-        <file path="../workflows/templates/phpstorm/stubs/google-maps.js" />
+        <file path="../workflows/templates/phpstorm/stubs/google-maps.d.ts" />
     </library>
 </libraries>

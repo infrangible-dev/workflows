@@ -224,7 +224,7 @@ tools/add-return-tags.py ../m2-core/src
 | `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude                 |
 | `stubs/`                 | include path in `.idea/php.xml`                    | classes for PhpStorm only (see below)       |
 | `unchecked-exceptions.xml` | `.idea/php.xml` (`PhpAnalysisConfiguration`)     | exceptions that need no `@throws` tag       |
-| `js-libraries.xml`       | `.idea/libraries/`, `.idea/jsLibraryMappings.xml`  | Magento's RequireJS, jQuery, ... (`lib/web`), the Google Maps API (`stubs/google-maps.js`) |
+| `js-libraries.xml`       | `.idea/libraries/`, `.idea/jsLibraryMappings.xml`  | Magento's RequireJS, jQuery, ... (`lib/web`), the Google Maps API (`stubs/google-maps.d.ts`) |
 | `dictionary.xml`         | `.idea/dictionaries/magento.xml`                   | words of Magento for the spell checker      |
 
 The folders of the files of `js-libraries.xml` (for example `lib/web/requirejs` with `define()`) are indexed as well:
@@ -255,7 +255,7 @@ tools/configure-phpstorm.py --ide-profile /mnt/c/Users/<user>/AppData/Roaming/Je
 `stubs/` declares classes that the tests use, but that the PHPUnit of the development environment may not have, for
 example attributes of PHPUnit 12. PhpStorm finds them through the include path
 `$PROJECT_DIR$/../workflows/templates/phpstorm/stubs`, so this repository has to be checked out next to the modules.
-The file is never loaded by PHP. `stubs/google-maps.js` declares the parts of the Google Maps JavaScript API that
+The file is never loaded by PHP. `stubs/google-maps.d.ts` declares the parts of the Google Maps JavaScript API that
 the modules use (Google loads the API at runtime); the JavaScript library `google-maps` of `js-libraries.xml` points to
 it, so PhpStorm does not take `google.maps.Map` for the built-in `Map` of JavaScript.
 
