@@ -46,4 +46,11 @@
      * requirements can be installed is checked by CI with every supported Magento version.
     -->
     <inspection_tool class="PhpNotInstalledPackagesInspection" enabled="false" level="WARNING" enabled_by_default="false" />
+    <!--
+     * XML: the attribute translate="true" on labels and descriptions in etc/widget.xml is declared fixed="true" in
+     * Magento's widget.xsd, which PhpStorm reports as a redundant default value. Magento's phrase collector
+     * (bin/magento i18n:collect-phrases) reads the XML file, not the schema, and collects only nodes that carry the
+     * attribute, so it has to stay; Magento's own widget.xml files write it as well.
+    -->
+    <inspection_tool class="XmlDefaultAttributeValue" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
 </inspections>
