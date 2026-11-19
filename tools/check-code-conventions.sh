@@ -2,8 +2,8 @@
 # Checks conventions of a module that PHPCS and PHPStan cannot express, mostly findings that PhpStorm reports.
 #
 # Array types in docblocks need a notation that satisfies both PhpStorm and PHPStan level 9: PhpStorm reports array
-# types without key type ("mixed[]", "array<mixed>", "array<mixed, mixed>") as replaceable with "array", PHPStan needs
-# the value type. Array keys are always int or string. So
+# types without key type ("mixed[]", "array<mixed>", "array<mixed, mixed>", "iterable<mixed>") as replaceable with
+# "array", PHPStan needs the value type. Array keys are always int or string. So
 # write "@param array $x" together with "@phpstan-param array<string, mixed> $x" (or "array<int, mixed>", or a more
 # precise type).
 #
@@ -58,6 +58,7 @@ check() {
 
 check 'mixed\[\]' "Use '@param array \$x' with '@phpstan-param array<string, mixed> \$x' instead of 'mixed[]'"
 check 'array<mixed>' "Use 'array<string, mixed>' or 'array<int, mixed>' (or a more precise type) instead of 'array<mixed>'"
+check 'iterable<mixed>' "Use 'iterable<int|string, mixed>' (or a more precise type) instead of 'iterable<mixed>'"
 check 'array<mixed\s*,' "Use 'array<int|string, mixed>' (or a more precise key type) instead of 'array<mixed, ...>'"
 # shellcheck disable=SC2016 # the pattern contains $, not a variable
 check '\$(this|block)->escape(Html|HtmlAttr|Js|Css|Url|XssInUrl|Quote|JsQuote)\(' \
