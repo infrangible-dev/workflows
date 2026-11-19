@@ -227,6 +227,11 @@ tools/add-return-tags.py ../m2-core/src
 | `js-libraries.xml`       | `.idea/libraries/`, `.idea/jsLibraryMappings.xml`  | Magento's RequireJS, jQuery, ... (`lib/web`) |
 | `dictionary.xml`         | `.idea/dictionaries/magento.xml`                   | words of Magento for the spell checker      |
 
+The folders of the files of `js-libraries.xml` (for example `lib/web/requirejs` with `define()`) are indexed as well:
+PhpStorm's Composer synchronization excludes `vendor/magento/magento2-base`, and files of a JavaScript library in an
+excluded folder are unknown to PhpStorm. The folders are only changed while the `vendor` folder of the module exists
+(the development environment of the module is running).
+
 ```bash
 tools/configure-phpstorm.py ../m2-*            # apply the settings to all modules with a .idea folder
 tools/configure-phpstorm.py --check ../m2-*    # only list modules with different settings

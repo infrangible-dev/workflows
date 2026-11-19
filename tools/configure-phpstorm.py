@@ -118,23 +118,48 @@ def exclude_beside(module: Path, excluded: str, path: str) -> list[str]:
     return sorted(paths)
 
 
+def library_folders(libraries: dict[str, list[str]], index: list[str]) -> list[str]:
+    """Returns the folders of the JavaScript library files that have to be indexed besides the index paths.
+
+    A library file in an excluded folder is not indexed, so PhpStorm does not know its functions (for example define()
+    of RequireJS in lib/web/requirejs). Folders that contain an index path (lib/web for jquery.js) stay as they are,
+    their files are not excluded."""
+    folders = sorted({str(Path(path).parent) for files in libraries.values() for path in files})
+    # folders that contain an index path are not excluded themselves
+    folders = [folder for folder in folders if not any(path.startswith(folder + "/") for path in index)]
+    # a folder inside another library folder is indexed with it
+    result = [folder for folder in folders if not any(folder.startswith(other + "/") for other in folders)]
+    return result
+
+
 def apply_folders(iml: str, index: list[str], exclude: list[str], module: Path) -> str:
-    exclude = list(exclude)
+    def excluded_in_iml(path: str) -> re.Pattern[str]:
+        return re.compile(r'[ \t]*<excludeFolder url="file://\$MODULE_DIR\$/' + re.escape(path) + r'" />\n')
+
+    def on_way_to_index(path: str) -> bool:
+        return any(path == indexed or indexed.startswith(path + "/") for indexed in index)
+
+    pending = list(exclude)
     for path in index:
-        iml = re.sub(r'[ \t]*<excludeFolder url="file://\$MODULE_DIR\$/' + re.escape(path) + r'" />\n', "", iml)
+        iml = excluded_in_iml(path).sub("", iml)
         # an excluded parent folder, for example a Composer package that PhpStorm's Composer synchronization excludes,
-        # is replaced by the exclusion of everything beside the path
+        # or a folder that an earlier index path excludes, is replaced by the exclusion of everything beside the path
         parts = path.split("/")
         for length in range(len(parts) - 1, 0, -1):
             parent = "/".join(parts[:length])
-            element = re.compile(r'[ \t]*<excludeFolder url="file://\$MODULE_DIR\$/' + re.escape(parent) + r'" />\n')
-            if element.search(iml):
+            if excluded_in_iml(parent).search(iml) or parent in pending:
                 beside = exclude_beside(module, parent, path)
                 if beside:
-                    iml = element.sub("", iml)
-                    exclude += beside
+                    iml = excluded_in_iml(parent).sub("", iml)
+                    pending = [folder for folder in pending if folder != parent] + beside
                 break
-    for path in exclude:
+    # no exclusion of an index path or of a folder on the way to one
+    for path in index:
+        for length in range(len(path.split("/")), 0, -1):
+            iml = excluded_in_iml("/".join(path.split("/")[:length])).sub("", iml)
+    for path in pending:
+        if on_way_to_index(path):
+            continue
         element = f'<excludeFolder url="file://$MODULE_DIR$/{path}" />'
         if element in iml:
             continue
@@ -288,8 +313,9 @@ def main() -> int:
     resources = project_resources()
     entries = entry_points()
     index, exclude = module_folders()
-    unchecked = unchecked_exceptions()
     libraries = js_libraries()
+    index = index + library_folders(libraries, index)
+    unchecked = unchecked_exceptions()
     outdated = False
 
     for directory in directories:
