@@ -20,4 +20,12 @@
         <file path="vendor/magento/magento2-base/lib/web/knockoutjs/knockout.js" />
         <file path="vendor/magento/magento2-base/lib/web/prototype/prototype.js" />
     </library>
+    <!--
+     * Declarations of the Google Maps JavaScript API, which Google loads at runtime (maps.googleapis.com). Without
+     * them PhpStorm resolves google.maps.Map to the built-in Map of JavaScript and reports the arguments of
+     * new google.maps.Map(element, options) as invalid. Relative to the module like the PHP stubs.
+    -->
+    <library name="google-maps">
+        <file path="../workflows/templates/phpstorm/stubs/google-maps.js" />
+    </library>
 </libraries>

@@ -124,7 +124,9 @@ def library_folders(libraries: dict[str, list[str]], index: list[str]) -> list[s
     A library file in an excluded folder is not indexed, so PhpStorm does not know its functions (for example define()
     of RequireJS in lib/web/requirejs). Folders that contain an index path (lib/web for jquery.js) stay as they are,
     their files are not excluded."""
-    folders = sorted({str(Path(path).parent) for files in libraries.values() for path in files})
+    # files outside the module (the stubs of the workflows repository) are not in an excluded folder
+    folders = sorted({str(Path(path).parent) for files in libraries.values() for path in files
+                      if not path.startswith("../")})
     # folders that contain an index path are not excluded themselves
     folders = [folder for folder in folders if not any(path.startswith(folder + "/") for path in index)]
     # a folder inside another library folder is indexed with it
