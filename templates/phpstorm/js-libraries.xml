@@ -21,6 +21,26 @@
         <file path="vendor/magento/magento2-base/lib/web/prototype/prototype.js" />
     </library>
     <!--
+     * Scripts of Magento's modules that the modules extend (widgets like $.mage.priceBox, mixins of the swatch renderer)
+     * or use. They are part of the excluded Composer packages magento/module-*, so methods of the parent widgets (for
+     * example reloadPrice() of the price box) are reported as unresolved. Add a script here when a module extends or
+     * uses another one.
+    -->
+    <library name="magento-modules-web">
+        <file path="vendor/magento/module-catalog/view/base/web/js/price-box.js" />
+        <file path="vendor/magento/module-catalog/view/base/web/js/price-options.js" />
+        <file path="vendor/magento/module-catalog/view/base/web/js/price-utils.js" />
+        <file path="vendor/magento/module-catalog/view/frontend/web/js/catalog-add-to-cart.js" />
+        <file path="vendor/magento/module-bundle/view/base/web/js/price-bundle.js" />
+        <file path="vendor/magento/module-configurable-product/view/frontend/web/js/configurable.js" />
+        <file path="vendor/magento/module-swatches/view/base/web/js/swatch-renderer.js" />
+        <file path="vendor/magento/module-customer/view/frontend/web/js/customer-data.js" />
+        <file path="vendor/magento/module-checkout/view/frontend/web/js/checkout-data.js" />
+        <file path="vendor/magento/module-checkout/view/frontend/web/js/model/shipping-save-processor/payload-extender.js" />
+        <file path="vendor/magento/module-ui/view/base/web/js/modal/modal.js" />
+        <file path="vendor/magento/module-ui/view/base/web/js/modal/alert.js" />
+    </library>
+    <!--
      * Declarations of the Google Maps JavaScript API, which Google loads at runtime (maps.googleapis.com). Without
      * them PhpStorm resolves google.maps.Map to the built-in Map of JavaScript and reports the arguments of
      * new google.maps.Map(element, options) as invalid. Relative to the module like the PHP stubs.
