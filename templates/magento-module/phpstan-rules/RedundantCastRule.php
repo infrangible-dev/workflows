@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace Infrangible\PhpStan;
 
 use PhpParser\Node;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\Cast;
 use PHPStan\Analyser\Scope;
 use PHPStan\Rules\Rule;
@@ -22,10 +23,13 @@ use PHPStan\Type\VerbosityLevel;
 /**
  * A cast of a value that already has the type of the cast is redundant.
  *
- * PhpStorm reports it as "Type cast is redundant". Like PhpStorm, the declared types count, also those of docblocks.
- * If Magento declares a type that differs at runtime (for example a string from the database declared as float), keep
- * the cast and add "@noinspection PhpCastIsUnnecessaryInspection" with a reason on the line, the line before, the
- * method or the file.
+ * PhpStorm reports it as "Type cast is redundant". Like PhpStorm, the declared types count, also those of docblocks. For
+ * a call of a method with a body and without native return type, PhpStorm also uses the types that the body returns,
+ * which PHPStan does not know: such a cast is only reported if the native type already has the type of the cast (else
+ * PhpStorm would report a suppression as redundant, for example for Order\Item::getProductOptions(), which declares an
+ * array but returns null for items without options). If a declared type differs at runtime and PhpStorm still reports
+ * the cast, keep it and add "@noinspection PhpCastIsUnnecessaryInspection" with a reason on the line, the line before,
+ * the method or the file.
  *
  * @implements Rule<Cast>
  */
@@ -57,6 +61,12 @@ class RedundantCastRule implements Rule
         $type = $scope->getType($node->expr);
 
         if (! $this->hasType($node, $type)->yes() || $this->isSuppressed($node, $scope)) {
+            return [];
+        }
+
+        if (! $this->hasType($node, $scope->getNativeType($node->expr))->yes() &&
+            $this->callsMethodWithBody($node->expr, $scope)) {
+
             return [];
         }
 
@@ -107,6 +117,37 @@ class RedundantCastRule implements Rule
             $node instanceof Cast\Bool_ => $type->isBoolean(),
             default => $type->isArray()
         };
+    }
+
+    /**
+     * Checks if the expression calls a method with a body, which is not abstract and not declared in an interface.
+     *
+     * @param Expr $expression
+     * @param Scope $scope
+     *
+     * @return bool
+     */
+    private function callsMethodWithBody(Expr $expression, Scope $scope): bool
+    {
+        if (! ($expression instanceof Expr\MethodCall || $expression instanceof Expr\NullsafeMethodCall ||
+                $expression instanceof Expr\StaticCall) || ! $expression->name instanceof Node\Identifier) {
+
+            return false;
+        }
+
+        $type = $expression instanceof Expr\StaticCall ?
+            ($expression->class instanceof Node\Name ? $scope->resolveTypeByName($expression->class) : null) :
+            $scope->getType($expression->var);
+
+        if ($type === null || ! $type->hasMethod($expression->name->toString())->yes()) {
+            return false;
+        }
+
+        $method = $type->getMethod($expression->name->toString(), $scope);
+        $abstract = $method->isAbstract();
+
+        return ! $method->getDeclaringClass()->isInterface() &&
+            ! ($abstract instanceof TrinaryLogic ? $abstract->yes() : $abstract);
     }
 
     /**

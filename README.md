@@ -92,8 +92,9 @@ On every push and pull request, for each combination of the matrix:
    catch of a checked exception that no call of the try block declares is reported ("Exception is never thrown in the
    corresponding try block"; not for `Exception` and `Throwable`, and not with
    `@noinspection PhpRedundantCatchClauseInspection` on the method or the try), and a cast of a value that already has
-   the type of the cast ("Type cast is redundant"; types of docblocks count, as in PhpStorm; where Magento declares a
-   type that differs at runtime, keep the cast with `@noinspection PhpCastIsUnnecessaryInspection`), and an
+   the type of the cast ("Type cast is redundant"; types of docblocks count, as in PhpStorm, except for calls of methods
+   with a body and without native return type, whose returned types PhpStorm also reads; where PhpStorm still reports
+   a needed cast, keep it with `@noinspection PhpCastIsUnnecessaryInspection`), and an
    `instanceof` check of a value whose declared type is an interface or abstract class of the module against the only
    class of the module that implements it ("Condition is always 'true' because '$x' is evaluated at this point";
    declare the needed methods in the interface instead), and a foreach loop directly after `$x = [];` that only
