@@ -222,12 +222,24 @@ if [[ -n "${qualifiedImport}" ]]; then
 fi
 
 # fully qualified class names that could be imported (PhpStorm: "Qualifier can be replaced with an import"), in code
-# and docblocks; allowed if the short name is already taken (an import of another class, the class itself) or with
+# and docblocks; allowed if the short name is already taken (an import of another class, the class itself, a class of
+# the module in the same namespace) or with
 # "@noinspection PhpFullyQualifiedNameUsageInspection" on the line or the line before (deprecated Magento classes)
 qualifiedName=$(python3 - <<'PYTHON'
 import pathlib, re
 
-for path in sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('src').rglob('*.phtml'))):
+paths = sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('src').rglob('*.phtml')))
+
+# classes of the module by namespace: their short names are taken in files of the same namespace
+namespaceClasses = {}
+for path in paths:
+    source = path.read_text(encoding='utf-8', errors='replace')
+    namespace = re.search(r'^namespace\s+([\w\\]+)\s*;', source, re.M)
+    if namespace:
+        for match in re.finditer(r'^\s*(?:abstract\s+|final\s+|readonly\s+)*(?:class|interface|trait|enum)\s+(\w+)', source, re.M):
+            namespaceClasses.setdefault(namespace.group(1).lower(), set()).add(match.group(1).lower())
+
+for path in paths:
     source = path.read_text(encoding='utf-8', errors='replace')
     if re.search(r'@noinspection[^\n]*PhpFullyQualifiedNameUsageInspection', source.split('\n', 1)[0]):
         continue
@@ -238,6 +250,9 @@ for path in sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path(
     namespace = re.search(r'^namespace\s+([\w\\]+)\s*;', source, re.M)
     for match in re.finditer(r'^\s*(?:abstract\s+|final\s+|readonly\s+)*(?:class|interface|trait|enum)\s+(\w+)', source, re.M):
         taken.setdefault(match.group(1).lower(), f'{namespace.group(1) if namespace else ""}\\{match.group(1)}'.lower())
+    if namespace:
+        for short in namespaceClasses.get(namespace.group(1).lower(), set()):
+            taken.setdefault(short, f'{namespace.group(1)}\\{short}'.lower())
     lines = source.splitlines()
     for number, line in enumerate(lines, 1):
         if re.match(r'\s*(use|namespace)\s', line):
