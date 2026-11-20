@@ -85,7 +85,12 @@ On every push and pull request, for each combination of the matrix:
    tag that 2.4.8 needs is not reported as too wide there; before 2.4.9, `Escaper::escapeHtml()` declares
    `string|array` as result also for a string, `phpstan.escaper.stub` declares the types of 2.4.9. Tests may declare
    `@throws ReflectionException` for reflection on classes they name themselves, which PhpStorm requires and PHPStan
-   knows cannot be thrown.
+   knows cannot be thrown. `phpstan.rules.php` adds two rules for what PhpStorm checks beyond PHPStan (classes in
+   `phpstan-rules`): checked exceptions have to be in the `@throws` tag of the method itself, also when a parent method
+   declares them (PHPStan inherits the tag, PhpStorm does not, for example in constructors of Magento models), and a
+   catch of a checked exception that no call of the try block declares is reported ("Exception is never thrown in the
+   corresponding try block"; not for `Exception` and `Throwable`, and not with
+   `@noinspection PhpRedundantCatchClauseInspection` on the method or the try).
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
    only JavaScript and styles) skip the step.
@@ -144,6 +149,7 @@ configuration have to load the Magento installation from `MAGENTO_ROOT` (see `ph
 | `phpcs.xml`                | Magento2 coding standard and PHP 8.2 compatibility for `src`             |
 | `phpstan.neon`             | PHPStan level 9 for `src`, including missing or too wide `@throws` tags  |
 | `phpstan.bootstrap.php`    | loads the PHPStan autoloader of Magento from `MAGENTO_ROOT`              |
+| `phpstan.rules.php`        | registers the PHPStan rules of `phpstan-rules` for checks of PhpStorm    |
 | `phpunit.xml`              | unit tests in `src/Test/Unit`                                            |
 | `phpunit.bootstrap.php`    | loads the bootstrap of the Magento unit tests from `MAGENTO_ROOT`        |
 | `.github/workflows/ci.yml` | calls the workflow of this repository                                    |
