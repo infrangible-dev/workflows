@@ -91,7 +91,9 @@ On every push and pull request, for each combination of the matrix:
    declares them (PHPStan inherits the tag, PhpStorm does not, for example in constructors of Magento models), and a
    catch of a checked exception that no call of the try block declares is reported ("Exception is never thrown in the
    corresponding try block"; not for `Exception` and `Throwable`, and not with
-   `@noinspection PhpRedundantCatchClauseInspection` on the method or the try).
+   `@noinspection PhpRedundantCatchClauseInspection` on the method or the try), and a cast of a value that already has
+   the type of the cast ("Type cast is redundant"; types of docblocks count, as in PhpStorm; where Magento declares a
+   type that differs at runtime, keep the cast with `@noinspection PhpCastIsUnnecessaryInspection`).
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
    only JavaScript and styles) skip the step.
