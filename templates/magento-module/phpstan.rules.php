@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/phpstan-rules/DefaultArgumentRule.php';
 require_once __DIR__ . '/phpstan-rules/NeverThrownCatchRule.php';
+require_once __DIR__ . '/phpstan-rules/OnlyImplementationInstanceofRule.php';
 require_once __DIR__ . '/phpstan-rules/OwnThrowsRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantCastRule.php';
 
@@ -23,6 +24,8 @@ return [
         Infrangible\PhpStan\DefaultArgumentRule::class,
         // a catch of a checked exception that no call of the try block declares
         Infrangible\PhpStan\NeverThrownCatchRule::class,
+        // an instanceof check against the only class of the module that implements the declared interface
+        Infrangible\PhpStan\OnlyImplementationInstanceofRule::class,
         // checked exceptions declared only in the @throws tag of a parent method
         Infrangible\PhpStan\OwnThrowsRule::class,
         // a cast of a value that already has the type of the cast

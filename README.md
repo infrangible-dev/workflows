@@ -93,7 +93,10 @@ On every push and pull request, for each combination of the matrix:
    corresponding try block"; not for `Exception` and `Throwable`, and not with
    `@noinspection PhpRedundantCatchClauseInspection` on the method or the try), and a cast of a value that already has
    the type of the cast ("Type cast is redundant"; types of docblocks count, as in PhpStorm; where Magento declares a
-   type that differs at runtime, keep the cast with `@noinspection PhpCastIsUnnecessaryInspection`).
+   type that differs at runtime, keep the cast with `@noinspection PhpCastIsUnnecessaryInspection`), and an
+   `instanceof` check of a value whose declared type is an interface or abstract class of the module against the only
+   class of the module that implements it ("Condition is always 'true' because '$x' is evaluated at this point";
+   declare the needed methods in the interface instead).
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
    only JavaScript and styles) skip the step.
