@@ -224,7 +224,8 @@ fi
 # fully qualified class names that could be imported (PhpStorm: "Qualifier can be replaced with an import"), in code
 # and docblocks; allowed if the short name is already taken (an import of another class, the class itself, a class of
 # the module in the same namespace) or with
-# "@noinspection PhpFullyQualifiedNameUsageInspection" on the line or the line before (deprecated Magento classes)
+# "@noinspection PhpFullyQualifiedNameUsageInspection" (or ALL) on the line, the line before, the method or the file
+# (deprecated Magento classes)
 qualifiedName=$(python3 - <<'PYTHON'
 import pathlib, re
 
@@ -241,8 +242,24 @@ for path in paths:
 
 for path in paths:
     source = path.read_text(encoding='utf-8', errors='replace')
-    if re.search(r'@noinspection[^\n]*PhpFullyQualifiedNameUsageInspection', source.split('\n', 1)[0]):
+    if re.search(r'@noinspection[^\n]*\b(PhpFullyQualifiedNameUsageInspection|ALL)\b', source.split('\n', 1)[0]):
         continue
+    # lines of methods whose PHPDoc suppresses the inspection, from the PHPDoc to the end of the method
+    suppressedLines = set()
+    for match in re.finditer(r'/\*\*(?:(?!\*/).)*?@noinspection[^\n]*?\b(?:PhpFullyQualifiedNameUsageInspection|ALL)\b.*?\*/\s*'
+                             r'(?:(?:public|protected|private|static|final|abstract)\s+)*function\b[^{;]*', source, re.S):
+        end = match.end()
+        if end < len(source) and source[end] == '{':
+            depth = 0
+            for position in range(end, len(source)):
+                if source[position] == '{':
+                    depth += 1
+                elif source[position] == '}':
+                    depth -= 1
+                    if depth == 0:
+                        end = position
+                        break
+        suppressedLines.update(range(source.count('\n', 0, match.start()) + 1, source.count('\n', 0, end) + 2))
     taken = {}
     for match in re.finditer(r'^use\s+\\?([\w\\]+)(?:\s+as\s+(\w+))?\s*;', source, re.M):
         name = match.group(1)
@@ -255,7 +272,7 @@ for path in paths:
             taken.setdefault(short, f'{namespace.group(1)}\\{short}'.lower())
     lines = source.splitlines()
     for number, line in enumerate(lines, 1):
-        if re.match(r'\s*(use|namespace)\s', line):
+        if re.match(r'\s*(use|namespace)\s', line) or number in suppressedLines:
             continue
         if 'PhpFullyQualifiedNameUsageInspection' in line or (
                 number > 1 and 'PhpFullyQualifiedNameUsageInspection' in lines[number - 2]):
