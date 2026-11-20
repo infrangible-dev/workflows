@@ -23,7 +23,9 @@
 # return type.
 #
 # Classes that are imported with "use" are written with their short name; PhpStorm reports "\\RuntimeException" after
-# "use RuntimeException;" as "Qualifier is unnecessary and can be removed".
+# "use RuntimeException;" as "Qualifier is unnecessary and can be removed". Classes that are not imported are imported
+# instead of written with their fully qualified name, also in docblocks ("Qualifier can be replaced with an import"),
+# unless the short name is taken by another import or the class itself.
 #
 # Every module requires infrangible/m2-foundation in its composer.json, the module that presents Infrangible in the
 # Magento admin, also when the code of the module does not use it. m2-foundation itself is the exception.
@@ -211,6 +213,52 @@ PYTHON
 if [[ -n "${qualifiedImport}" ]]; then
   echo "${qualifiedImport}"
   message="Use the short name of imported classes: 'RuntimeException' instead of '\\RuntimeException' after 'use RuntimeException;'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# fully qualified class names that could be imported (PhpStorm: "Qualifier can be replaced with an import"), in code
+# and docblocks; allowed if the short name is already taken (an import of another class, the class itself) or with
+# "@noinspection PhpFullyQualifiedNameUsageInspection" on the line or the line before (deprecated Magento classes)
+qualifiedName=$(python3 - <<'PYTHON'
+import pathlib, re
+
+for path in sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('src').rglob('*.phtml'))):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    if re.search(r'@noinspection[^\n]*PhpFullyQualifiedNameUsageInspection', source.split('\n', 1)[0]):
+        continue
+    taken = {}
+    for match in re.finditer(r'^use\s+\\?([\w\\]+)(?:\s+as\s+(\w+))?\s*;', source, re.M):
+        name = match.group(1)
+        taken[(match.group(2) or name.rsplit('\\', 1)[-1]).lower()] = name.lower()
+    namespace = re.search(r'^namespace\s+([\w\\]+)\s*;', source, re.M)
+    for match in re.finditer(r'^\s*(?:abstract\s+|final\s+|readonly\s+)*(?:class|interface|trait|enum)\s+(\w+)', source, re.M):
+        taken.setdefault(match.group(1).lower(), f'{namespace.group(1) if namespace else ""}\\{match.group(1)}'.lower())
+    lines = source.splitlines()
+    for number, line in enumerate(lines, 1):
+        if re.match(r'\s*(use|namespace)\s', line):
+            continue
+        if 'PhpFullyQualifiedNameUsageInspection' in line or (
+                number > 1 and 'PhpFullyQualifiedNameUsageInspection' in lines[number - 2]):
+            continue
+        code = re.sub(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"", "''", line)
+        if not re.match(r'\s*(\*|/\*\*)', line):
+            code = code.split('//', 1)[0]
+        for match in re.finditer(r'(?<![\w\\$])\\([A-Za-z_]\w*(?:\\[A-Za-z_]\w*)+)', code):
+            name = match.group(1)
+            short = name.rsplit('\\', 1)[-1].lower()
+            if short in taken and taken[short] != name.lower():
+                continue
+            print(f'{path}:{number}: {line.strip()}')
+PYTHON
+)
+if [[ -n "${qualifiedName}" ]]; then
+  echo "${qualifiedName}"
+  message="Import classes with 'use' instead of writing their fully qualified name (also in docblocks), unless the short name is taken"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
