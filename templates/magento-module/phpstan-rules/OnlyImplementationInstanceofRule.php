@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace Infrangible\PhpStan;
 
 use PhpParser\Node;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\Instanceof_;
 use PhpParser\Node\Name;
 use PHPStan\Analyser\Scope;
@@ -20,13 +21,13 @@ use PHPStan\Rules\RuleErrorBuilder;
 
 /**
  * An instanceof check of a value whose declared type is an interface or abstract class of the module against the only
- * class of the module that implements it.
+ * class of the module that implements it, also as assertInstanceOf() of PHPUnit.
  *
  * PhpStorm knows all classes of the project and reports such a check as "Condition is always 'true' because '$x' is
- * evaluated at this point"; PHPStan only knows the declared type. Instead of the check, the interface should declare
- * the methods that the code needs.
+ * evaluated at this point" ("Assertion is always 'true'" for assertInstanceOf()); PHPStan only knows the declared
+ * type. Instead of the check, the interface should declare the methods that the code needs.
  *
- * @implements Rule<Instanceof_>
+ * @implements Rule<Expr>
  */
 class OnlyImplementationInstanceofRule implements Rule
 {
@@ -39,22 +40,26 @@ class OnlyImplementationInstanceofRule implements Rule
 
     public function getNodeType(): string
     {
-        return Instanceof_::class;
+        return Expr::class;
     }
 
     /**
-     * @param Instanceof_ $node
+     * @param Expr $node
      *
      * @return list<\PHPStan\Rules\IdentifierRuleError>
      */
     public function processNode(Node $node, Scope $scope): array
     {
-        if (! $node->class instanceof Name) {
+        $check = $this->getCheck($node);
+
+        if ($check === null) {
             return [];
         }
 
-        $checkedClassName = $scope->resolveName($node->class);
-        $declaredClassNames = $scope->getType($node->expr)->getObjectClassNames();
+        [$checkedName, $checkedExpression] = $check;
+
+        $checkedClassName = $scope->resolveName($checkedName);
+        $declaredClassNames = $scope->getType($checkedExpression)->getObjectClassNames();
 
         if (count($declaredClassNames) !== 1 || ! $this->reflectionProvider->hasClass($checkedClassName) ||
             ! $this->reflectionProvider->hasClass($declaredClassNames[ 0 ])) {
@@ -111,6 +116,38 @@ class OnlyImplementationInstanceofRule implements Rule
                 )
             )->identifier('infrangible.onlyImplementationInstanceof')->build()
         ];
+    }
+
+    /**
+     * Returns the class and the value of an instanceof check or of an assertInstanceOf() call of PHPUnit, or null.
+     *
+     * @param Expr $node
+     *
+     * @return array{0: Name, 1: Expr}|null
+     */
+    private function getCheck(Expr $node): ?array
+    {
+        if ($node instanceof Instanceof_) {
+            return $node->class instanceof Name ? [$node->class, $node->expr] : null;
+        }
+
+        if (! ($node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall) ||
+            ! $node->name instanceof Node\Identifier || $node->name->toLowerString() !== 'assertinstanceof' ||
+            $node->isFirstClassCallable()) {
+
+            return null;
+        }
+
+        $arguments = $node->getArgs();
+
+        if (count($arguments) < 2 || ! $arguments[ 0 ]->value instanceof Expr\ClassConstFetch) {
+            return null;
+        }
+
+        $classConstant = $arguments[ 0 ]->value;
+
+        return $classConstant->class instanceof Name && $classConstant->name instanceof Node\Identifier &&
+            $classConstant->name->toLowerString() === 'class' ? [$classConstant->class, $arguments[ 1 ]->value] : null;
     }
 
     /**
