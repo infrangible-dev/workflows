@@ -26,10 +26,10 @@ use PHPStan\Type\VerbosityLevel;
  * PhpStorm reports it as "Type cast is redundant". Like PhpStorm, the declared types count, also those of
  * docblocks. For a call of a method with a body and without native return type, PhpStorm also uses the types that the
  * body returns, which PHPStan does not know: such a cast is only reported if the native type already has the type of
- * the cast (else PhpStorm would report a suppression as redundant, for example for Order\Item::getProductOptions(), which declares an
- * array but returns null for items without options). If a declared type differs at runtime and PhpStorm still reports
- * the cast, keep it and add "@noinspection PhpCastIsUnnecessaryInspection" with a reason on the line, the line before,
- * the method or the file.
+ * the cast (else PhpStorm would report a suppression as redundant, for example for Order\Item::getProductOptions(),
+ * which declares an array but returns null for items without options). If a declared type differs at runtime and
+ * PhpStorm still reports the cast, keep it and add "@noinspection PhpCastIsUnnecessaryInspection" with a reason on the
+ * line, the line before, the method or the file.
  *
  * @implements Rule<Cast>
  */
