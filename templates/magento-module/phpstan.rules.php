@@ -13,6 +13,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/phpstan-rules/DefaultArgumentRule.php';
+require_once __DIR__ . '/phpstan-rules/LoopToArrayMapRule.php';
 require_once __DIR__ . '/phpstan-rules/NeverThrownCatchRule.php';
 require_once __DIR__ . '/phpstan-rules/OnlyImplementationInstanceofRule.php';
 require_once __DIR__ . '/phpstan-rules/OwnThrowsRule.php';
@@ -22,6 +23,8 @@ return [
     'rules' => [
         // a literal as last argument that is the default value of the parameter
         Infrangible\PhpStan\DefaultArgumentRule::class,
+        // a foreach loop that only fills an empty array with one value per element
+        Infrangible\PhpStan\LoopToArrayMapRule::class,
         // a catch of a checked exception that no call of the try block declares
         Infrangible\PhpStan\NeverThrownCatchRule::class,
         // an instanceof check against the only class of the module that implements the declared interface

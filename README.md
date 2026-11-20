@@ -96,7 +96,8 @@ On every push and pull request, for each combination of the matrix:
    type that differs at runtime, keep the cast with `@noinspection PhpCastIsUnnecessaryInspection`), and an
    `instanceof` check of a value whose declared type is an interface or abstract class of the module against the only
    class of the module that implements it ("Condition is always 'true' because '$x' is evaluated at this point";
-   declare the needed methods in the interface instead).
+   declare the needed methods in the interface instead), and a foreach loop directly after `$x = [];` that only
+   assigns one value per element to `$x[]` or `$x[$key]` ("Loop can be converted to an 'array_map()' call").
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
    only JavaScript and styles) skip the step.
