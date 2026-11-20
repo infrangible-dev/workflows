@@ -12,11 +12,14 @@ declare(strict_types=1);
  * @license     http://www.opensource.org/licenses/mit-license.php MIT
  */
 
+require_once __DIR__ . '/phpstan-rules/DefaultArgumentRule.php';
 require_once __DIR__ . '/phpstan-rules/NeverThrownCatchRule.php';
 require_once __DIR__ . '/phpstan-rules/OwnThrowsRule.php';
 
 return [
     'rules' => [
+        // a literal as last argument that is the default value of the parameter
+        Infrangible\PhpStan\DefaultArgumentRule::class,
         // a catch of a checked exception that no call of the try block declares
         Infrangible\PhpStan\NeverThrownCatchRule::class,
         // checked exceptions declared only in the @throws tag of a parent method

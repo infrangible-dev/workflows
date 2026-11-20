@@ -85,8 +85,9 @@ On every push and pull request, for each combination of the matrix:
    tag that 2.4.8 needs is not reported as too wide there; before 2.4.9, `Escaper::escapeHtml()` declares
    `string|array` as result also for a string, `phpstan.escaper.stub` declares the types of 2.4.9. Tests may declare
    `@throws ReflectionException` for reflection on classes they name themselves, which PhpStorm requires and PHPStan
-   knows cannot be thrown. `phpstan.rules.php` adds two rules for what PhpStorm checks beyond PHPStan (classes in
-   `phpstan-rules`): checked exceptions have to be in the `@throws` tag of the method itself, also when a parent method
+   knows cannot be thrown. `phpstan.rules.php` adds rules for what PhpStorm checks beyond PHPStan (classes in
+   `phpstan-rules`): a literal as last argument that is the default value of the parameter ("Argument matches the
+   parameter's default value"), checked exceptions have to be in the `@throws` tag of the method itself, also when a parent method
    declares them (PHPStan inherits the tag, PhpStorm does not, for example in constructors of Magento models), and a
    catch of a checked exception that no call of the try block declares is reported ("Exception is never thrown in the
    corresponding try block"; not for `Exception` and `Throwable`, and not with
