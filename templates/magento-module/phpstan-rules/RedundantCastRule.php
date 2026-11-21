@@ -175,20 +175,27 @@ class RedundantCastRule implements Rule
     private function callsMethodWithBody(Expr $expression, Scope $scope): bool
     {
         if (! ($expression instanceof Expr\MethodCall || $expression instanceof Expr\NullsafeMethodCall ||
-                $expression instanceof Expr\StaticCall) || ! $expression->name instanceof Node\Identifier) {
+            $expression instanceof Expr\StaticCall)) {
 
+            return false;
+        }
+
+        $name = $expression->name;
+        $class = $expression instanceof Expr\StaticCall ? $expression->class : null;
+
+        if (! $name instanceof Node\Identifier) {
             return false;
         }
 
         $type = $expression instanceof Expr\StaticCall ?
-            ($expression->class instanceof Node\Name ? $scope->resolveTypeByName($expression->class) : null) :
+            ($class instanceof Node\Name ? $scope->resolveTypeByName($class) : null) :
             $scope->getType($expression->var);
 
-        if ($type === null || ! $type->hasMethod($expression->name->toString())->yes()) {
+        if ($type === null || ! $type->hasMethod($name->toString())->yes()) {
             return false;
         }
 
-        $method = $type->getMethod($expression->name->toString(), $scope);
+        $method = $type->getMethod($name->toString(), $scope);
         $abstract = $method->isAbstract();
 
         return ! $method->getDeclaringClass()->isInterface() &&

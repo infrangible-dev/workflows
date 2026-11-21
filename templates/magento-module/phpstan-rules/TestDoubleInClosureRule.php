@@ -51,9 +51,10 @@ class TestDoubleInClosureRule implements Rule
      */
     public function processNode(Node $node, Scope $scope): array
     {
-        if (! ($node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall) ||
-            ! $node->name instanceof Node\Identifier ||
-            ! in_array($node->name->toLowerString(), self::METHODS, true) || ! $scope->isInAnonymousFunction()) {
+        $name = $node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall ? $node->name : null;
+
+        if (! $name instanceof Node\Identifier || ! in_array($name->toLowerString(), self::METHODS, true) ||
+            ! $scope->isInAnonymousFunction()) {
 
             return [];
         }
@@ -63,7 +64,7 @@ class TestDoubleInClosureRule implements Rule
                 sprintf(
                     'Create the test double of %s() outside of the closure, for example in a helper method: ' .
                     'PhpStorm does not resolve its type inside a closure.',
-                    $node->name->toString()
+                    $name->toString()
                 )
             )->identifier('infrangible.testDoubleInClosure')->build()
         ];

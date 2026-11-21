@@ -60,12 +60,11 @@ readonly class RedundantVarTagRule implements Rule
         }
 
         $variable = $assign->var;
+        $variableName = $variable instanceof Expr\Variable ? $variable->name : null;
 
-        if (! $variable instanceof Expr\Variable || ! is_string($variable->name)) {
+        if (! is_string($variableName)) {
             return [];
         }
-
-        $variableName = $variable->name;
 
         $varTags = $this->fileTypeMapper->getResolvedPhpDoc(
             $scope->getFile(),

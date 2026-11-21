@@ -59,10 +59,9 @@ class VariableOnlyUsedInClosureRule implements Rule
         foreach ($node->getStmts() ?? [] as $statement) {
             $assign = $statement instanceof Stmt\Expression ? $statement->expr : null;
             $variable = $assign instanceof Expr\Assign ? $assign->var : null;
+            $name = $variable instanceof Expr\Variable ? $variable->name : null;
 
-            if ($assign instanceof Expr\Assign && $variable instanceof Expr\Variable && is_string($variable->name)) {
-                $name = $variable->name;
-
+            if ($assign instanceof Expr\Assign && is_string($name)) {
                 $assignLines[ $name ] = $statement->getStartLine();
                 $assignCounts[ $name ] = ($assignCounts[ $name ] ?? 0) + 1;
 

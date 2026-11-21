@@ -152,13 +152,16 @@ readonly class DefaultArgumentRule implements Rule
         } elseif ($node instanceof Expr\MethodCall || $node instanceof Expr\NullsafeMethodCall ||
             $node instanceof Expr\StaticCall) {
 
-            if ($node->name instanceof Node\Identifier) {
+            $name = $node->name;
+            $class = $node instanceof Expr\StaticCall ? $node->class : null;
+
+            if ($name instanceof Node\Identifier) {
                 $type = $node instanceof Expr\StaticCall ?
-                    ($node->class instanceof Name ? $scope->resolveTypeByName($node->class) : null) :
+                    ($class instanceof Name ? $scope->resolveTypeByName($class) : null) :
                     $scope->getType($node->var);
 
-                if ($type !== null && $type->hasMethod($node->name->toString())->yes()) {
-                    $variants = $type->getMethod($node->name->toString(), $scope)->getVariants();
+                if ($type !== null && $type->hasMethod($name->toString())->yes()) {
+                    $variants = $type->getMethod($name->toString(), $scope)->getVariants();
                 }
             }
         }

@@ -130,23 +130,29 @@ class OnlyImplementationInstanceofRule implements Rule
     private function getCheck(Expr $node): ?array
     {
         if ($node instanceof Instanceof_) {
-            return $node->class instanceof Name ? [$node->class, $node->expr] : null;
+            $checkedClass = $node->class;
+
+            return $checkedClass instanceof Name ? [$checkedClass, $node->expr] : null;
         }
 
-        if (! ($node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall) ||
-            ! $node->name instanceof Node\Identifier || $node->name->toLowerString() !== 'assertinstanceof' ||
+        if (! ($node instanceof Expr\MethodCall || $node instanceof Expr\StaticCall)) {
+            return null;
+        }
+
+        $name = $node->name;
+
+        if (! $name instanceof Node\Identifier || $name->toLowerString() !== 'assertinstanceof' ||
             $node->isFirstClassCallable()) {
 
             return null;
         }
 
         $arguments = $node->getArgs();
+        $classConstant = count($arguments) >= 2 ? $arguments[ 0 ]->value : null;
 
-        if (count($arguments) < 2 || ! $arguments[ 0 ]->value instanceof Expr\ClassConstFetch) {
+        if (! $classConstant instanceof Expr\ClassConstFetch) {
             return null;
         }
-
-        $classConstant = $arguments[ 0 ]->value;
 
         $class = $classConstant->class;
         $constantName = $classConstant->name;

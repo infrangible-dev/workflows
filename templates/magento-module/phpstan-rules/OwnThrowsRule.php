@@ -139,19 +139,22 @@ readonly class OwnThrowsRule implements Rule
         if ($node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\NullsafeMethodCall ||
             $node instanceof Node\Expr\StaticCall) {
 
-            if (! $node->name instanceof Node\Identifier) {
+            $name = $node->name;
+            $class = $node instanceof Node\Expr\StaticCall ? $node->class : null;
+
+            if (! $name instanceof Node\Identifier) {
                 return true;
             }
 
             $type = $node instanceof Node\Expr\StaticCall ?
-                ($node->class instanceof Node\Name ? $scope->resolveTypeByName($node->class) : null) :
+                ($class instanceof Node\Name ? $scope->resolveTypeByName($class) : null) :
                 $scope->getType($node->var);
 
-            if ($type === null || ! $type->hasMethod($node->name->toString())->yes()) {
+            if ($type === null || ! $type->hasMethod($name->toString())->yes()) {
                 return true;
             }
 
-            $method = $type->getMethod($node->name->toString(), $scope);
+            $method = $type->getMethod($name->toString(), $scope);
         } elseif ($node instanceof Node\Expr\New_ && $node->class instanceof Node\Name) {
             $type = $scope->resolveTypeByName($node->class);
 

@@ -226,8 +226,10 @@ readonly class NeverThrownCatchRule implements Rule
     private function getThrowType(Node $node, Scope $scope): Type|null|false
     {
         if ($node instanceof Expr\Throw_ || $node instanceof Node\Stmt\Throw_) {
-            return $node->expr instanceof Expr\New_ && $node->expr->class instanceof Name ?
-                new ObjectType($scope->resolveName($node->expr->class)) : false;
+            $thrown = $node->expr;
+            $thrownClass = $thrown instanceof Expr\New_ ? $thrown->class : null;
+
+            return $thrownClass instanceof Name ? new ObjectType($scope->resolveName($thrownClass)) : false;
         }
 
         if ($node instanceof Expr\New_) {
@@ -260,28 +262,33 @@ readonly class NeverThrownCatchRule implements Rule
             return false;
         }
 
-        if (! $node->name instanceof Node\Identifier) {
+        $name = $node->name;
+
+        if (! $name instanceof Node\Identifier) {
             return false;
         }
 
         if ($node instanceof Expr\StaticCall) {
-            if (! $node->class instanceof Name) {
+            $class = $node->class;
+
+            if (! $class instanceof Name) {
                 return false;
             }
 
-            $type = $scope->resolveTypeByName($node->class);
+            $type = $scope->resolveTypeByName($class);
         } else {
-            // variables that are assigned in the try block are unknown here
-            if ($node->var instanceof Expr\Variable && is_string($node->var->name) &&
-                ! $scope->hasVariableType($node->var->name)->yes()) {
+            $variable = $node->var;
+            $variableName = $variable instanceof Expr\Variable ? $variable->name : null;
 
+            // variables that are assigned in the try block are unknown here
+            if (is_string($variableName) && ! $scope->hasVariableType($variableName)->yes()) {
                 return false;
             }
 
-            $type = $scope->getType($node->var);
+            $type = $scope->getType($variable);
         }
 
-        $methodName = $node->name->toString();
+        $methodName = $name->toString();
 
         if (! $type->hasMethod($methodName)->yes()) {
             return false;
