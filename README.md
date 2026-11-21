@@ -98,7 +98,10 @@ On every push and pull request, for each combination of the matrix:
    `instanceof` check of a value whose declared type is an interface or abstract class of the module against the only
    class of the module that implements it, also with PHPUnit's `assertInstanceOf()` ("Condition is always 'true' because '$x' is evaluated at this point";
    declare the needed methods in the interface instead), and a foreach loop directly after `$x = [];` that only
-   assigns one value per element to `$x[]` or `$x[$key]` ("Loop can be converted to an 'array_map()' call").
+   assigns one value per element to `$x[]` or `$x[$key]` ("Loop can be converted to an 'array_map()' call"), and
+   `@noinspection PhpUnusedParameterInspection` on a method that overrides or implements a method of a parent class
+   or an interface, or that uses all its parameters ("Redundant suppression"; PhpStorm reports no unused parameters of
+   such methods).
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
    only JavaScript and styles) skip the step.

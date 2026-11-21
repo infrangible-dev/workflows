@@ -18,6 +18,7 @@ require_once __DIR__ . '/phpstan-rules/NeverThrownCatchRule.php';
 require_once __DIR__ . '/phpstan-rules/OnlyImplementationInstanceofRule.php';
 require_once __DIR__ . '/phpstan-rules/OwnThrowsRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantCastRule.php';
+require_once __DIR__ . '/phpstan-rules/RedundantUnusedParameterSuppressionRule.php';
 
 return [
     'rules' => [
@@ -32,6 +33,8 @@ return [
         // checked exceptions declared only in the @throws tag of a parent method
         Infrangible\PhpStan\OwnThrowsRule::class,
         // a cast of a value that already has the type of the cast
-        Infrangible\PhpStan\RedundantCastRule::class
+        Infrangible\PhpStan\RedundantCastRule::class,
+        // a suppression of unused parameters on a method that overrides a parent method or uses all parameters
+        Infrangible\PhpStan\RedundantUnusedParameterSuppressionRule::class
     ]
 ];
