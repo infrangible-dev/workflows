@@ -102,7 +102,9 @@ On every push and pull request, for each combination of the matrix:
    `@noinspection PhpUnusedParameterInspection` on a method that overrides or implements a method of a parent class
    or an interface, or that uses all its parameters ("Redundant suppression"; PhpStorm reports no unused parameters of
    such methods), and an inline `@var` tag of an assignment that specifies the type the assigned value already has,
-   also by docblock ("@var tag specifies the type already inferred from source code").
+   also by docblock ("@var tag specifies the type already inferred from source code"), and a test double of PHPUnit
+   created inside a closure (PhpStorm does not resolve the type of `createStub()` of a generated factory there and
+   reports "Expected parameter of type 'XFactory', 'object&Stub|Stub' provided"; create it before the closure).
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
    only JavaScript and styles) skip the step.

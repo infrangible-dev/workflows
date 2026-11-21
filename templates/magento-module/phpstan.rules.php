@@ -20,6 +20,7 @@ require_once __DIR__ . '/phpstan-rules/OwnThrowsRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantCastRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantUnusedParameterSuppressionRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantVarTagRule.php';
+require_once __DIR__ . '/phpstan-rules/TestDoubleInClosureRule.php';
 
 return [
     'rules' => [
@@ -38,6 +39,8 @@ return [
         // a suppression of unused parameters on a method that overrides a parent method or uses all parameters
         Infrangible\PhpStan\RedundantUnusedParameterSuppressionRule::class,
         // an inline @var tag of an assignment with the type that the assigned value already has
-        Infrangible\PhpStan\RedundantVarTagRule::class
+        Infrangible\PhpStan\RedundantVarTagRule::class,
+        // a test double of PHPUnit created inside a closure
+        Infrangible\PhpStan\TestDoubleInClosureRule::class
     ]
 ];
