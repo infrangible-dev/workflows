@@ -106,7 +106,10 @@ On every push and pull request, for each combination of the matrix:
    created inside a closure (PhpStorm does not resolve the type of `createStub()` of a generated factory there and
    reports "Expected parameter of type 'XFactory', 'object&Stub|Stub' provided"; create it outside, for example in a helper method), and a
    variable that is assigned once and then only passed by value to one closure with `use` ("Variable is only used
-   inside closure"; assign it in the closure). `PhpStormThrowTypeExtension` adds the checked exceptions that the PHP
+   inside closure"; assign it in the closure), and a parameter that the method does not use ("Unused parameter";
+   not for methods that override another one, methods without statements, which are hooks, and promoted constructor
+   parameters; methods with a given signature, like the methods of plugins, suppress it with
+   `@noinspection PhpUnusedParameterInspection`). `PhpStormThrowTypeExtension` adds the checked exceptions that the PHP
    stubs of PhpStorm declare to PHP's functions and methods, for example `DOMException` of `DOMDocument::saveXML()`,
    so that missing `@throws` tags are reported as in PhpStorm ("PHPDoc comment doesn't contain all the necessary
    @throws tags"). `tools/generate-phpstorm-throws.py <phpstorm-stubs>` generates its list
