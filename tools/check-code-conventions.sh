@@ -199,7 +199,7 @@ fi
 qualifiedImport=$(python3 - <<'PYTHON'
 import pathlib, re
 
-for path in sorted(pathlib.Path('src').rglob('*.php')):
+for path in sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('phpstan-rules').glob('*.php'))):
     source = path.read_text(encoding='utf-8', errors='replace')
     imports = {}
     for match in re.finditer(r'^use\s+([\w\\]+)(?:\s+as\s+(\w+))?\s*;', source, re.M):
@@ -232,7 +232,9 @@ fi
 qualifiedName=$(python3 - <<'PYTHON'
 import pathlib, re
 
-paths = sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('src').rglob('*.phtml')))
+# also the PHPStan rules copied from the workflows, which PhpStorm inspects as part of the module
+paths = sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('src').rglob('*.phtml')) +
+               list(pathlib.Path('phpstan-rules').glob('*.php')))
 
 # classes of the module by namespace: their short names are taken in files of the same namespace
 namespaceClasses = {}

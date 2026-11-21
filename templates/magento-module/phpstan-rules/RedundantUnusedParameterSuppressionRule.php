@@ -15,6 +15,7 @@ use PhpParser\Node\Expr;
 use PhpParser\NodeFinder;
 use PHPStan\Analyser\Scope;
 use PHPStan\Node\InClassMethodNode;
+use PHPStan\Rules\IdentifierRuleError;
 use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 
@@ -41,7 +42,7 @@ class RedundantUnusedParameterSuppressionRule implements Rule
      * @param InClassMethodNode $node
      * @param Scope $scope
      *
-     * @return list<\PHPStan\Rules\IdentifierRuleError>
+     * @return list<IdentifierRuleError>
      */
     public function processNode(Node $node, Scope $scope): array
     {
@@ -134,9 +135,9 @@ class RedundantUnusedParameterSuppressionRule implements Rule
      *
      * @param string $reason
      *
-     * @return \PHPStan\Rules\IdentifierRuleError
+     * @return IdentifierRuleError
      */
-    private function buildError(string $reason): \PHPStan\Rules\IdentifierRuleError
+    private function buildError(string $reason): IdentifierRuleError
     {
         return RuleErrorBuilder::message(
             sprintf(
