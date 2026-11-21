@@ -30,7 +30,6 @@ $composerLoader = require rtrim($magentoRoot, '/') . '/vendor/autoload.php';
 
 require rtrim($magentoRoot, '/') . '/dev/tests/static/framework/Magento/PhpStan/autoload.php';
 
-/** @var \Magento\Framework\TestFramework\Unit\Autoloader\GeneratedClassesAutoloader $generatedCodeAutoloader */
 spl_autoload_unregister([$generatedCodeAutoloader, 'load']);
 
 $factoryIo = new \Magento\Framework\Code\Generator\Io(

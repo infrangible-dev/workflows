@@ -508,6 +508,19 @@ then
   failed=1
 fi
 
+# inline @var tags in the shared PHP files of templates/magento-module (bootstrap files and configurations): PHPStan does
+# not analyse them, and PhpStorm infers the types, also of the variables of required files ("@var tag specifies the type
+# already inferred from source code")
+if grep -nP '^\s*/\*\*\s*@var\b' "${RULES_DIR}"/../*.php; then
+  message="Remove inline @var tags from the shared PHP files of templates/magento-module, PhpStorm infers the types"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # docblocks of the PHPStan rules without all parameters
 if ! python3 - <<'PY'
 import os, pathlib, re, sys
