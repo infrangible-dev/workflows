@@ -25,10 +25,10 @@ use PHPStan\Type\ObjectType;
 use PHPStan\Type\Type;
 
 /**
- * A catch of a checked exception that none of the calls in the try block declares in @throws is dead.
+ * A catch of a checked exception that none of the calls in the try block declares in throws is dead.
  *
  * PhpStorm reports it as "Exception is never thrown in the corresponding try block"; PHPStan does not, because it
- * assumes that calls without @throws can throw anything. The rule is conservative: it only reports a catch if every
+ * assumes that calls without throws can throw anything. The rule is conservative: it only reports a catch if every
  * call of the try block can be resolved, and never catches of Exception or Throwable, which PhpStorm accepts as well.
  * Like in PhpStorm, "@noinspection PhpRedundantCatchClauseInspection" on the try or the method suppresses it.
  *

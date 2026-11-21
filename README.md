@@ -48,7 +48,9 @@ On every push and pull request, for each combination of the matrix:
      with `translate` in XML) is translated in `src/i18n` into the 15 languages cs_CZ, da_DK, de_DE, es_ES, fi_FI,
      fr_FR, it_IT, nb_NO, nl_NL, nn_NO, pl_PL, pt_BR, pt_PT, sv_SE and uk_UA; the country variants de_AT, de_CH,
      de_LU, fr_BE, fr_CH, fr_LU, nl_BE, it_CH and sv_FI are copies; all checked with
-     `tools/check-code-conventions.sh <module>`, which can also be run locally
+     `tools/check-code-conventions.sh <module>`, which can also be run locally; it also checks the docblocks and class
+     names of the PHPStan rules in `templates/magento-module/phpstan-rules` (no tags in running text, every parameter
+     documented, imports instead of qualified names), not the copies in the modules, which may be older
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes

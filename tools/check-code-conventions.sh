@@ -43,6 +43,11 @@ set -u
 
 moduleDir="${1:?Usage: $0 <module directory>}"
 
+# the PHPStan rules are checked in the templates of the workflows, which tools/sync-module-config.sh copies into the
+# modules: an older copy in a module must not fail its checks before the next synchronization
+RULES_DIR="$(cd "$(dirname "$0")/../templates/magento-module/phpstan-rules" && pwd)"
+export RULES_DIR
+
 cd "${moduleDir}" || exit 1
 
 failed=0
@@ -197,9 +202,9 @@ fi
 
 # imported classes that are written with their fully qualified name
 qualifiedImport=$(python3 - <<'PYTHON'
-import pathlib, re
+import os, pathlib, re
 
-for path in sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('phpstan-rules').glob('*.php'))):
+for path in sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path(os.environ['RULES_DIR']).glob('*.php'))):
     source = path.read_text(encoding='utf-8', errors='replace')
     imports = {}
     for match in re.finditer(r'^use\s+([\w\\]+)(?:\s+as\s+(\w+))?\s*;', source, re.M):
@@ -230,11 +235,11 @@ fi
 # "@noinspection PhpFullyQualifiedNameUsageInspection" (or ALL) on the line, the line before, the method or the file
 # (deprecated Magento classes)
 qualifiedName=$(python3 - <<'PYTHON'
-import pathlib, re
+import os, pathlib, re
 
 # also the PHPStan rules copied from the workflows, which PhpStorm inspects as part of the module
 paths = sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('src').rglob('*.phtml')) +
-               list(pathlib.Path('phpstan-rules').glob('*.php')))
+               list(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')))
 
 # classes of the module by namespace: their short names are taken in files of the same namespace
 namespaceClasses = {}
@@ -454,10 +459,10 @@ if [[ -n "${translations}" ]]; then
 fi
 
 # docblocks of the PHPStan rules without all parameters
-if [[ -d phpstan-rules ]] && ! python3 - <<'PY'
-import pathlib, re, sys
+if ! python3 - <<'PY'
+import os, pathlib, re, sys
 failed = False
-for path in sorted(pathlib.Path('phpstan-rules').glob('*.php')):
+for path in sorted(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')):
     text = path.read_text(encoding='utf-8')
     pattern = (r'(/\*\*(?:(?!\*/).)*\*/)\s*(?:(?:public|protected|private|static|final|abstract)\s+)*'
                r'function\s+(\w+)\s*\(([^)]*)\)')
@@ -472,6 +477,18 @@ sys.exit(1 if failed else 0)
 PY
 then
   message="Document every parameter in the docblocks of phpstan-rules (in the workflows repository)"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# docblock tags in running text
+if grep -rnP --include='*.php' --include='*.phtml' '^\s*\*\s+[^@\s].*(?<![{\w])@(throws|param|return|var)\b' \
+  src "${RULES_DIR}"; then
+  message="Write docblock tags only as tags: 'throws tag' instead of '@throws tag' in running text"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else

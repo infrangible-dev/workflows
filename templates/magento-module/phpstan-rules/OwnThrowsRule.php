@@ -21,10 +21,10 @@ use PHPStan\Type\FileTypeMapper;
 use PHPStan\Type\ObjectType;
 
 /**
- * Checked exceptions that a method lets through have to be declared in its own @throws tag.
+ * Checked exceptions that a method lets through have to be declared in its own throws tag.
  *
- * PHPStan inherits the @throws tag of the parent method (for example of the constructor of Magento's models), PhpStorm
- * does not: it reports "PHPDoc comment doesn't contain all the necessary @throws tags" for the method. Exceptions that
+ * PHPStan inherits the throws tag of the parent method (for example of the constructor of Magento's models), PhpStorm
+ * does not: it reports "PHPDoc comment doesn't contain all the necessary throws tags" for the method. Exceptions that
  * are not declared at all are reported by PHPStan itself (exceptions.check.missingCheckedExceptionInThrows). Like in
  * PhpStorm, only exceptions that the called methods declare themselves count, not inherited ones.
  *
