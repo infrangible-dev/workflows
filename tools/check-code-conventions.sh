@@ -458,6 +458,56 @@ if [[ -n "${translations}" ]]; then
   failed=1
 fi
 
+# PHP extensions in the PHP files outside of src (composer-require-checker checks src): PhpStorm reports "'ext-…' is
+# missing in composer.json". The shared files of templates/magento-module (checked there, not the copies in the modules,
+# which may be older) only run in the PHPStan of Magento, whose framework requires the extensions: they suppress the
+# inspection with a reason; other files of the module need the extension in composer.json
+if ! python3 - . <<'PY'
+import json, os, pathlib, re, sys
+extensions = {
+    'dom': r'\bDOM(?:Document|Element|Node|XPath|Attr|Text)\b|\bdom_import_simplexml\s*\(',
+    'simplexml': r'\bSimpleXMLElement\b|\bsimplexml_\w+\s*\(',
+    'libxml': r'\blibxml_\w+\s*\(',
+    'xmlreader': r'\bXMLReader\b',
+    'xmlwriter': r'\bXMLWriter\b',
+    'mbstring': r'\bmb_\w+\s*\(',
+    'iconv': r'\biconv\w*\s*\(',
+    'ctype': r'\bctype_\w+\s*\(',
+    'curl': r'\bcurl_\w+\s*\(',
+    'zlib': r'\bgz\w+\s*\(',
+    'intl': r'\b(?:Collator|NumberFormatter|IntlDateFormatter|Normalizer|Transliterator)\b',
+}
+suppression = re.compile(r'@noinspection\s+PhpComposerExtensionStubsInspection\b')
+module = pathlib.Path(sys.argv[1])
+templates = pathlib.Path(os.environ['RULES_DIR']).parent
+templateNames = {path.name for path in templates.glob('*.php')}
+composer = json.loads((module / 'composer.json').read_text(encoding='utf-8'))
+required = {name[4:].lower() for section in ('require', 'require-dev') for name in composer.get(section, {})
+            if name.startswith('ext-')}
+paths = [(path, True) for path in sorted(templates.glob('*.php')) + sorted(templates.glob('phpstan-rules/*.php'))
+         if path.name != 'phpstorm-throws.php']
+paths += [(path, False) for path in sorted(module.glob('*.php')) if path.name not in templateNames]
+failed = False
+for path, shared in paths:
+    source = path.read_text(encoding='utf-8', errors='replace')
+    code = re.sub(r'/\*.*?\*/|//[^\n]*|\'(?:\\.|[^\'\\])*\'', '', source, flags=re.S)
+    used = [name for name, pattern in extensions.items() if re.search(pattern, code)]
+    missing = [] if suppression.search(source) else [name for name in used if shared or name not in required]
+    for name in missing:
+        print(f'{path}: uses ext-{name}' + (' without the suppression' if shared else ', missing in composer.json'))
+        failed = True
+sys.exit(1 if failed else 0)
+PY
+then
+  message="Require the PHP extensions in composer.json, or suppress PhpComposerExtensionStubsInspection with a reason in shared files"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # docblocks of the PHPStan rules without all parameters
 if ! python3 - <<'PY'
 import os, pathlib, re, sys

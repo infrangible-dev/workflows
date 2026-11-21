@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * @noinspection PhpComposerExtensionStubsInspection The file only runs in the PHPStan of Magento, whose framework
+ *               requires ext-dom; the module itself does not need it.
+ */
+
 declare(strict_types=1);
 
 /**

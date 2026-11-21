@@ -52,7 +52,9 @@ On every push and pull request, for each combination of the matrix:
      names of the PHPStan rules in `templates/magento-module/phpstan-rules` (no tags in running text, every parameter
      documented, imports instead of qualified names, no node classes that php-parser 5 deprecates, because the
      rules run with php-parser 4 of PHPStan 1 and php-parser 5 of PHPStan 2), not the copies in the modules,
-     which may be older
+     which may be older; PHP extensions in the PHP files outside of `src` (composer-require-checker covers `src`):
+     the shared files only run in the PHPStan of Magento, whose framework requires them, and suppress
+     `PhpComposerExtensionStubsInspection` with that reason, other files need the `ext-*` in composer.json
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes
