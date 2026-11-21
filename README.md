@@ -93,7 +93,8 @@ On every push and pull request, for each combination of the matrix:
    corresponding try block"; not for `Exception` and `Throwable`, and not with
    `@noinspection PhpRedundantCatchClauseInspection` on the method or the try), and a cast of a value that already has
    the type of the cast ("Type cast is redundant"; types of docblocks count, as in PhpStorm, except for calls of methods
-   with a body and without native return type, whose returned types PhpStorm also reads; where PhpStorm still reports
+   with a body and without native return type, whose returned types PhpStorm also reads, and except for PHP functions
+   whose result can be false or null in the stubs of PhpStorm, which PHPStan narrows; where PhpStorm still reports
    a needed cast, keep it with `@noinspection PhpCastIsUnnecessaryInspection`), and an
    `instanceof` check of a value whose declared type is an interface or abstract class of the module against the only
    class of the module that implements it, also with PHPUnit's `assertInstanceOf()` ("Condition is always 'true' because '$x' is evaluated at this point";
@@ -102,7 +103,8 @@ On every push and pull request, for each combination of the matrix:
    `@noinspection PhpUnusedParameterInspection` on a method that overrides or implements a method of a parent class
    or an interface, or that uses all its parameters ("Redundant suppression"; PhpStorm reports no unused parameters of
    such methods), and an inline `@var` tag of an assignment that specifies the type the assigned value already has,
-   also by docblock ("@var tag specifies the type already inferred from source code"), and a test double of PHPUnit
+   also by docblock ("@var tag specifies the type already inferred from source code"; not for calls with template
+   types, which can depend on the Magento version, like `createBlock()` since 2.4.9), and a test double of PHPUnit
    created inside a closure (PhpStorm does not resolve the type of `createStub()` of a generated factory there and
    reports "Expected parameter of type 'XFactory', 'object&Stub|Stub' provided"; create it outside, for example in a helper method), and a
    variable that is assigned once and then only passed by value to one closure with `use` ("Variable is only used
@@ -113,7 +115,8 @@ On every push and pull request, for each combination of the matrix:
    stubs of PhpStorm declare to PHP's functions and methods, for example `DOMException` of `DOMDocument::saveXML()`,
    so that missing `@throws` tags are reported as in PhpStorm ("PHPDoc comment doesn't contain all the necessary
    @throws tags"). `tools/generate-phpstorm-throws.py <phpstorm-stubs>` generates its list
-   `phpstan-rules/phpstorm-throws.php` from a checkout of https://github.com/JetBrains/phpstorm-stubs.
+   `phpstan-rules/phpstorm-throws.php` (also the functions with results that can be false or null) from a checkout of
+   https://github.com/JetBrains/phpstorm-stubs.
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
    only JavaScript and styles) skip the step.

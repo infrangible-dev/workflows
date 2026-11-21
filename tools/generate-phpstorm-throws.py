@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
 Generates templates/magento-module/phpstan-rules/phpstorm-throws.php: the checked exceptions that the PHP stubs of
-PhpStorm (https://github.com/JetBrains/phpstorm-stubs) declare in @throws tags of functions and methods.
+PhpStorm (https://github.com/JetBrains/phpstorm-stubs) declare in @throws tags of functions and methods, and the
+functions whose declared result can be false or null (RedundantCastRule: PHPStan narrows for example base64_decode()
+without $strict to string, for PhpStorm it is string|false, so a cast is not redundant).
 
 PhpStorm requires these exceptions in the @throws tag of the calling method ("PHPDoc comment doesn't contain all the
 necessary @throws tags"), PHPStan does not know them (for example DOMException of DOMDocument::saveXML()). The
@@ -42,6 +44,20 @@ def qualify(name: str, namespace: str, known: set[str]) -> str:
     return name.lower()
 
 
+def return_type(text: str, start: int) -> str:
+    """Returns the native return type of the function whose parameter list starts at the position, or ''."""
+    depth = 1
+    position = start
+
+    while position < len(text) and depth > 0:
+        depth += {'(': 1, ')': -1}.get(text[position], 0)
+        position += 1
+
+    match = re.match(r'\s*:\s*([?\w|\\ ]+?)\s*[{;]', text[position:position + 200])
+
+    return match.group(1).strip() if match else ''
+
+
 def scan(files: list[pathlib.Path]):
     """Yields (kind, data) of class declarations and documented functions and methods of the stubs."""
     for path in files:
@@ -66,7 +82,7 @@ def scan(files: list[pathlib.Path]):
                 name = match.group(10)
                 owner = classes[-1][0] if classes and classes[-1][1] == depth else None
 
-                yield 'function', (namespace, owner, name, doc or '')
+                yield 'function', (namespace, owner, name, doc or '', return_type(text, match.end()))
 
                 doc = None
             elif kind == 'open':
@@ -121,12 +137,20 @@ def main() -> None:
 
     functions = {}
     methods = {}
+    nullable_returns = []
 
     for kind, data in items:
         if kind != 'function':
             continue
 
-        namespace, owner, name, doc = data
+        namespace, owner, name, doc, native = data
+
+        # functions whose declared result can be false or null: casting it is not redundant for PhpStorm
+        declared = native if native and native != 'mixed' else ' '.join(re.findall(r'@return\s+(\S+)', doc)[:1])
+
+        if owner is None and re.search(r'(^|\|)(false|null)\b|^\?', declared.lower()):
+            nullable_returns.append((f'{namespace}\\{name}' if namespace else name).lower())
+
         names = exception_names(doc, namespace)
 
         if not names:
@@ -153,12 +177,16 @@ def main() -> None:
         " */\n\n"
         "return [\n"
         "    'functions' => [\n" + php_array(functions) + "    ],\n"
-        "    'methods' => [\n" + php_array(methods) + "    ]\n"
+        "    'methods' => [\n" + php_array(methods) + "    ],\n"
+        "    // functions whose declared result can be false or null, so that casting it is not redundant\n"
+        "    'nullable_returns' => [\n" +
+        ''.join(f"        '{n.replace(chr(92), chr(92) * 2)}',\n" for n in sorted(set(nullable_returns))) +
+        "    ]\n"
         "];\n",
         encoding='utf-8'
     )
 
-    print(f'{len(functions)} functions, {len(methods)} methods: {target}')
+    print(f'{len(functions)} functions, {len(methods)} methods, {len(set(nullable_returns))} nullable results: {target}')
 
 
 if __name__ == '__main__':

@@ -14,6 +14,7 @@ use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
 use PHPStan\Analyser\Scope;
+use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 use PHPStan\Type\FileTypeMapper;
@@ -24,13 +25,16 @@ use PHPStan\Type\VerbosityLevel;
  *
  * PhpStorm reports it as "@var tag specifies the type already inferred from source code". Like PhpStorm, the declared
  * types count, also those of docblocks, for example "@var Item[] $items" above "$items = $quote->getAllVisibleItems();".
+ * Not for calls of functions with template types, whose declaration can depend on the version of Magento.
  *
  * @implements Rule<Stmt\Expression>
  */
 class RedundantVarTagRule implements Rule
 {
-    public function __construct(private readonly FileTypeMapper $fileTypeMapper)
-    {
+    public function __construct(
+        private readonly FileTypeMapper $fileTypeMapper,
+        private readonly ReflectionProvider $reflectionProvider
+    ) {
     }
 
     public function getNodeType(): string
@@ -67,6 +71,10 @@ class RedundantVarTagRule implements Rule
             return [];
         }
 
+        if ($this->callsGenericFunction($node->expr->expr, $scope)) {
+            return [];
+        }
+
         $varType = $varTags[ $variableName ]->getType();
         $valueType = $scope->getType($node->expr->expr);
 
@@ -83,5 +91,54 @@ class RedundantVarTagRule implements Rule
                 )
             )->identifier('infrangible.redundantVarTag')->build()
         ];
+    }
+
+    /**
+     * Checks if the expression calls a function or method with template types, whose result type depends on its
+     * arguments.
+     *
+     * Such a declaration can be new in a version of Magento (LayoutInterface::createBlock() returns the created class
+     * since 2.4.9), the tag is needed for the older versions.
+     *
+     * @param Expr $expression
+     * @param Scope $scope
+     *
+     * @return bool
+     */
+    private function callsGenericFunction(Expr $expression, Scope $scope): bool
+    {
+        $reflection = null;
+
+        if ($expression instanceof Expr\MethodCall && $expression->name instanceof Node\Identifier) {
+            $type = $scope->getType($expression->var);
+
+            if ($type->hasMethod($expression->name->toString())->yes()) {
+                $reflection = $type->getMethod($expression->name->toString(), $scope);
+            }
+        } elseif ($expression instanceof Expr\StaticCall && $expression->class instanceof Node\Name &&
+            $expression->name instanceof Node\Identifier) {
+
+            $type = $scope->resolveTypeByName($expression->class);
+
+            if ($type->hasMethod($expression->name->toString())->yes()) {
+                $reflection = $type->getMethod($expression->name->toString(), $scope);
+            }
+        } elseif ($expression instanceof Expr\FuncCall && $expression->name instanceof Node\Name &&
+            $this->reflectionProvider->hasFunction($expression->name, $scope)) {
+
+            $reflection = $this->reflectionProvider->getFunction($expression->name, $scope);
+        }
+
+        if ($reflection === null) {
+            return false;
+        }
+
+        foreach ($reflection->getVariants() as $variant) {
+            if (! $variant->getTemplateTypeMap()->isEmpty()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

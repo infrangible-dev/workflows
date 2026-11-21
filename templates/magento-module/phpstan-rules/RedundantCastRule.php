@@ -14,6 +14,7 @@ use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\Cast;
 use PHPStan\Analyser\Scope;
+use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 use PHPStan\TrinaryLogic;
@@ -27,7 +28,10 @@ use PHPStan\Type\VerbosityLevel;
  * docblocks. For a call of a method with a body and without native return type, PhpStorm also uses the types that the
  * body returns, which PHPStan does not know: such a cast is only reported if the native type already has the type of
  * the cast (else PhpStorm would report a suppression as redundant, for example for Order\Item::getProductOptions(),
- * which declares an array but returns null for items without options). If a declared type differs at runtime and
+ * which declares an array but returns null for items without options). PHP's functions count with their declared
+ * types of PhpStorm's stubs, which PHPStan narrows by their arguments: a function whose result can be false or null
+ * there (base64_decode() without $strict is string|false, for PHPStan a string) is not reported, see
+ * phpstorm-throws.php. If a declared type differs at runtime and
  * PhpStorm still reports the cast, keep it and add "@noinspection PhpCastIsUnnecessaryInspection" with a reason on the
  * line, the line before, the method or the file.
  *
@@ -39,6 +43,13 @@ class RedundantCastRule implements Rule
 
     /** @var array<string, list<string>> */
     private array $fileLines = [];
+
+    /** @var array<string, int>|null functions whose result can be false or null, as keys */
+    private ?array $nullableReturns = null;
+
+    public function __construct(private readonly ReflectionProvider $reflectionProvider)
+    {
+    }
 
     public function getNodeType(): string
     {
@@ -67,6 +78,10 @@ class RedundantCastRule implements Rule
         if (! $this->hasType($node, $scope->getNativeType($node->expr))->yes() &&
             $this->callsMethodWithBody($node->expr, $scope)) {
 
+            return [];
+        }
+
+        if ($this->callsNullableFunction($node->expr, $scope)) {
             return [];
         }
 
@@ -117,6 +132,34 @@ class RedundantCastRule implements Rule
             $node instanceof Cast\Bool_ => $type->isBoolean(),
             default => $type->isArray()
         };
+    }
+
+    /**
+     * Checks if the expression calls a PHP function whose result can be false or null in the stubs of PhpStorm.
+     *
+     * @param Expr $expression
+     * @param Scope $scope
+     *
+     * @return bool
+     */
+    private function callsNullableFunction(Expr $expression, Scope $scope): bool
+    {
+        if (! $expression instanceof Expr\FuncCall || ! $expression->name instanceof Node\Name ||
+            ! $this->reflectionProvider->hasFunction($expression->name, $scope)) {
+
+            return false;
+        }
+
+        if ($this->nullableReturns === null) {
+            /** @var array{nullable_returns: list<string>} $stubs */
+            $stubs = require __DIR__ . '/phpstorm-throws.php';
+
+            $this->nullableReturns = array_flip($stubs[ 'nullable_returns' ]);
+        }
+
+        $functionName = strtolower($this->reflectionProvider->getFunction($expression->name, $scope)->getName());
+
+        return isset($this->nullableReturns[ $functionName ]);
     }
 
     /**
