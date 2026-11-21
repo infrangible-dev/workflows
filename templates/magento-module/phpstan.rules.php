@@ -19,6 +19,7 @@ require_once __DIR__ . '/phpstan-rules/OnlyImplementationInstanceofRule.php';
 require_once __DIR__ . '/phpstan-rules/OwnThrowsRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantCastRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantUnusedParameterSuppressionRule.php';
+require_once __DIR__ . '/phpstan-rules/RedundantVarTagRule.php';
 
 return [
     'rules' => [
@@ -35,6 +36,8 @@ return [
         // a cast of a value that already has the type of the cast
         Infrangible\PhpStan\RedundantCastRule::class,
         // a suppression of unused parameters on a method that overrides a parent method or uses all parameters
-        Infrangible\PhpStan\RedundantUnusedParameterSuppressionRule::class
+        Infrangible\PhpStan\RedundantUnusedParameterSuppressionRule::class,
+        // an inline @var tag of an assignment with the type that the assigned value already has
+        Infrangible\PhpStan\RedundantVarTagRule::class
     ]
 ];
