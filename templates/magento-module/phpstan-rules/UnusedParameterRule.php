@@ -108,7 +108,11 @@ class UnusedParameterRule implements Rule
         }
 
         foreach ($nodeFinder->findInstanceOf($statements, Expr\FuncCall::class) as $call) {
-            $callName = $call instanceof Expr\FuncCall ? $call->name : null;
+            if (! $call instanceof Expr\FuncCall) {
+                continue;
+            }
+
+            $callName = $call->name;
 
             if (! $callName instanceof Node\Name) {
                 continue;
