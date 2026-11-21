@@ -29,4 +29,14 @@
      * rules in phpstan-rules cannot handle; PHPStan declares it unchecked itself.
     -->
     <fqn value="\PHPStan\ShouldNotHappenException" />
+    <!--
+     * Thrown by the reflection of PHPStan (ClassReflection::getMethod(), getNativeMethod(), getProperty(),
+     * ReflectionProvider::getClass(), getFunction()) for missing members, classes and functions, which the rules check
+     * with hasMethod(), hasProperty(), hasClass() and hasFunction() before; the exceptions are not declared, PhpStorm
+     * finds them in the bodies of the methods.
+    -->
+    <fqn value="\PHPStan\Reflection\MissingMethodFromReflectionException" />
+    <fqn value="\PHPStan\Reflection\MissingPropertyFromReflectionException" />
+    <fqn value="\PHPStan\Broker\ClassNotFoundException" />
+    <fqn value="\PHPStan\Broker\FunctionNotFoundException" />
 </unchecked_exceptions>
