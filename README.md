@@ -120,7 +120,9 @@ On every push and pull request, for each combination of the matrix:
    inside closure"; assign it in the closure), and a parameter that the method does not use ("Unused parameter";
    not for methods that override another one, methods without statements, which are hooks, and promoted constructor
    parameters; methods with a given signature, like the methods of plugins, suppress it with
-   `@noinspection PhpUnusedParameterInspection`). `PhpStormThrowTypeExtension` adds the checked exceptions that the PHP
+   `@noinspection PhpUnusedParameterInspection`), and a constructor that does not call the constructor of its parent
+   class ("Missing parent constructor call"; skipping it on purpose needs
+   `@noinspection PhpMissingParentConstructorInspection` with a reason). `PhpStormThrowTypeExtension` adds the checked exceptions that the PHP
    stubs of PhpStorm declare to PHP's functions and methods, for example `DOMException` of `DOMDocument::saveXML()`,
    so that missing `@throws` tags are reported as in PhpStorm ("PHPDoc comment doesn't contain all the necessary
    @throws tags"). `tools/generate-phpstorm-throws.py <phpstorm-stubs>` generates its list

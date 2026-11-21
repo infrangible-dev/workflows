@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/phpstan-rules/DefaultArgumentRule.php';
 require_once __DIR__ . '/phpstan-rules/LoopToArrayMapRule.php';
+require_once __DIR__ . '/phpstan-rules/MissingParentConstructorCallRule.php';
 require_once __DIR__ . '/phpstan-rules/NarrowedPropertyAccessRule.php';
 require_once __DIR__ . '/phpstan-rules/NeverThrownCatchRule.php';
 require_once __DIR__ . '/phpstan-rules/OnlyImplementationInstanceofRule.php';
@@ -32,6 +33,8 @@ return [
         Infrangible\PhpStan\DefaultArgumentRule::class,
         // a foreach loop that only fills an empty array with one value per element
         Infrangible\PhpStan\LoopToArrayMapRule::class,
+        // a constructor that does not call the constructor of its parent class
+        Infrangible\PhpStan\MissingParentConstructorCallRule::class,
         // a member of the value of a property that only exists after an instanceof check of the property
         Infrangible\PhpStan\NarrowedPropertyAccessRule::class,
         // a catch of a checked exception that no call of the try block declares

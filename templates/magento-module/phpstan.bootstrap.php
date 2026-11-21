@@ -96,26 +96,21 @@ $generateExtensionAttributes = static function (string $className) use (
     if (! $factoryIo->fileExists($resultFile)) {
         $generatingExtensionAttributes[ $className ] = true;
 
-        // the configuration of the extension attributes, read from the files instead of the cache of Magento
-        $config = new class ($extensionAttributes()) extends \Magento\Framework\Api\ExtensionAttribute\Config {
-            /**
-             * @param array<string, mixed> $attributes
-             */
-            public function __construct(private readonly array $attributes)
-            {
-            }
+        // the configuration of the extension attributes, read from the files instead of the cache of Magento: without
+        // the constructor, which needs the reader and the cache of the object manager; the generator only calls get()
+        // without a path, which returns the merged data
+        try {
+            $config = (new \ReflectionClass(\Magento\Framework\Api\ExtensionAttribute\Config::class))
+                ->newInstanceWithoutConstructor();
+        } catch (\ReflectionException $exception) {
+            throw new \LogicException(
+                'The configuration of the extension attributes cannot be created: ' . $exception->getMessage(),
+                0,
+                $exception
+            );
+        }
 
-            /**
-             * @param string|null $path
-             * @param mixed $default
-             *
-             * @return mixed
-             */
-            public function get($path = null, $default = null)
-            {
-                return $path === null ? $this->attributes : ($this->attributes[ $path ] ?? $default);
-            }
-        };
+        $config->merge($extensionAttributes());
 
         $generator = $isInterface ?
             new \Magento\Framework\Api\Code\Generator\ExtensionAttributesInterfaceGenerator(
