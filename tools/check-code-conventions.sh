@@ -537,6 +537,18 @@ if grep -nP 'function\s+\w+\s*\([^)]*\)\s*:\s*\??\\?(?:[\w\\]*\\)?(?:Identifier)
   failed=1
 fi
 
+# node classes of php-parser 4 that php-parser 5 deprecates; the PHPStan rules run with both (PHPStan 1 and 2)
+if grep -nP '^(?!\s*(\*|//)).*\b(Scalar\\(LNumber|DNumber|Encapsed|EncapsedStringPart)|Expr\\(ArrayItem|ClosureUse)|Stmt\\(DeclareDeclare|PropertyProperty|StaticVar|UseUse))\b' \
+  "${RULES_DIR}"/*.php; then
+  message="Do not use node classes that php-parser 5 deprecates, compare the node type (getType()) of both versions instead"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # docblock tags in running text
 if grep -rnP --include='*.php' --include='*.phtml' '^\s*\*\s+[^@\s].*(?<![{\w])@(throws|param|return|var)\b' \
   src "${RULES_DIR}"; then

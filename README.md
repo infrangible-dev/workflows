@@ -50,7 +50,9 @@ On every push and pull request, for each combination of the matrix:
      de_LU, fr_BE, fr_CH, fr_LU, nl_BE, it_CH and sv_FI are copies; all checked with
      `tools/check-code-conventions.sh <module>`, which can also be run locally; it also checks the docblocks and class
      names of the PHPStan rules in `templates/magento-module/phpstan-rules` (no tags in running text, every parameter
-     documented, imports instead of qualified names), not the copies in the modules, which may be older
+     documented, imports instead of qualified names, no node classes that php-parser 5 deprecates, because the
+     rules run with php-parser 4 of PHPStan 1 and php-parser 5 of PHPStan 2), not the copies in the modules,
+     which may be older
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes

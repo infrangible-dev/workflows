@@ -30,6 +30,12 @@ use PHPStan\Rules\RuleErrorBuilder;
  */
 readonly class DefaultArgumentRule implements Rule
 {
+    /**
+     * Node types of number literals: LNumber and DNumber of php-parser 4 (PHPStan 1), Int_ and Float_ of php-parser 5
+     * (PHPStan 2), where the old classes are deprecated and the new ones do not exist in php-parser 4.
+     */
+    private const NUMBERS = ['Scalar_LNumber', 'Scalar_DNumber', 'Scalar_Int', 'Scalar_Float'];
+
     public function __construct(private ReflectionProvider $reflectionProvider)
     {
     }
@@ -105,14 +111,12 @@ readonly class DefaultArgumentRule implements Rule
      */
     private function isLiteral(Expr $expression): bool
     {
-        if ($expression instanceof Node\Scalar\LNumber || $expression instanceof Node\Scalar\DNumber ||
-            ($expression instanceof Node\Scalar\String_)) {
-
+        if ($expression instanceof Node\Scalar\String_ || in_array($expression->getType(), self::NUMBERS, true)) {
             return true;
         }
 
         if ($expression instanceof Expr\UnaryMinus) {
-            return $expression->expr instanceof Node\Scalar\LNumber || $expression->expr instanceof Node\Scalar\DNumber;
+            return in_array($expression->expr->getType(), self::NUMBERS, true);
         }
 
         if ($expression instanceof Expr\ConstFetch) {
