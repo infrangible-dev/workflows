@@ -28,9 +28,9 @@ use PHPStan\Type\TypeCombinator;
 /**
  * Adds the checked exceptions that the PHP stubs of PhpStorm declare to the throw types of PHP's functions and methods.
  *
- * PhpStorm requires them in the @throws tag of the calling method ("PHPDoc comment doesn't contain all the necessary
- * @throws tags"), PHPStan does not know some of them, for example DOMException of DOMDocument::saveXML(). With this
- * extension, PHPStan reports them as missing as well. The exceptions are listed in phpstorm-throws.php, which
+ * PhpStorm requires them in the @throws tag of the calling method (it reports "PHPDoc comment doesn't contain all the
+ * necessary @throws tags"), PHPStan does not know some of them, for example DOMException of DOMDocument::saveXML().
+ * With this extension, PHPStan reports them as missing as well. The exceptions are listed in phpstorm-throws.php, which
  * tools/generate-phpstorm-throws.py generates from the stubs.
  */
 class PhpStormThrowTypeExtension implements

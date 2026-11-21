@@ -78,7 +78,8 @@ On every push and pull request, for each combination of the matrix:
      deprecated class (PhpStorm reports the `use` statement, the check looks up the doc comment of the imported class
      through Magento's autoloader). Suppressions without reason fail,
      suppressions that cover no finding are reported as warnings
-3. PHPStan with the `phpstan.neon` of the module. The template checks level 9, the `@throws` tags as PhpStorm
+3. PHPStan with the `phpstan.neon` of the module. The template checks `src` and the copied rules in `phpstan-rules`
+   (which PhpStorm inspects as part of the module) at level 9, the `@throws` tags as PhpStorm
    expects them and typed properties that are read before they are set (`setUp()` of tests and Magento's
    `_construct()` count as constructors). `phpstan.versions.php` adds what depends on the Magento version of the
    installation: before 2.4.8, `AbstractModel::_init()` and `load()` do not declare their `LocalizedException`, so a

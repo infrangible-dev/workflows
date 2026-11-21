@@ -105,8 +105,8 @@ class OwnThrowsRule implements Rule
 
                 $errors[] = RuleErrorBuilder::message(
                     sprintf(
-                        'Method %s::%s() throws checked exception %s, which is only declared in the PHPDoc of a parent ' .
-                        'method; PhpStorm requires it in the @throws tag of the method itself.',
+                        'Method %s::%s() throws checked exception %s, which is only declared in the PHPDoc of a ' .
+                        'parent method; PhpStorm requires it in the @throws tag of the method itself.',
                         $method->getDeclaringClass()->getDisplayName(),
                         $method->getName(),
                         $className
@@ -119,8 +119,9 @@ class OwnThrowsRule implements Rule
     }
 
     /**
-     * Checks if the exceptions of the throw point are declared by the called method itself; PHPStan also inherits the
-     * @throws tag of a parent method for the called method, PhpStorm does not.
+     * Checks if the exceptions of the throw point are declared by the called method itself.
+     *
+     * PHPStan also inherits the throws tag of a parent method for the called method, PhpStorm does not.
      *
      * @param Node $node
      * @param Scope $scope

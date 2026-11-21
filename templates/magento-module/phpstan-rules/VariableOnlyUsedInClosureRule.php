@@ -100,7 +100,6 @@ class VariableOnlyUsedInClosureRule implements Rule
      * Counts the variables of the node outside of closures, and the variables that closures take by value.
      *
      * @param Node $node
-     * @param Scope $scope
      * @param array<string, int> $useCounts
      * @param array<string, int> $closureCounts
      *

@@ -87,14 +87,10 @@ class LoopToArrayMapRule implements Rule
 
         $statementLists = [$node->getStmts() ?? []];
 
-        $parents = $nodeFinder->find($node->getStmts() ?? [], static fn(Node $child): bool => isset($child->stmts));
+        foreach ($nodeFinder->find($node->getStmts() ?? [], static fn(Node $child): bool => true) as $child) {
+            $statements = $this->getStatements($child);
 
-        foreach ($parents as $child) {
-
-            /** @var mixed $statements */
-            $statements = $child->stmts;
-
-            if (is_array($statements)) {
+            if ($statements !== null) {
                 $statementLists[] = $statements;
             }
         }
@@ -110,6 +106,24 @@ class LoopToArrayMapRule implements Rule
                 }
             }
         }
+    }
+
+    /**
+     * Returns the statements of a node that contains statements (blocks of control structures, closures), or null.
+     *
+     * @param Node $node
+     *
+     * @return Node\Stmt[]|null
+     */
+    private function getStatements(Node $node): ?array
+    {
+        return match (true) {
+            $node instanceof Stmt\If_, $node instanceof Stmt\ElseIf_, $node instanceof Stmt\Else_,
+            $node instanceof Stmt\For_, $node instanceof Stmt\Foreach_, $node instanceof Stmt\While_,
+            $node instanceof Stmt\Do_, $node instanceof Stmt\TryCatch, $node instanceof Stmt\Catch_,
+            $node instanceof Stmt\Finally_, $node instanceof Stmt\Case_, $node instanceof Expr\Closure => $node->stmts,
+            default => null
+        };
     }
 
     /**
@@ -150,10 +164,13 @@ class LoopToArrayMapRule implements Rule
             return false;
         }
 
-        $usedNames = array_map(
-            static fn(Expr\Variable $variable): mixed => $variable->name,
-            (new NodeFinder())->findInstanceOf($statement->expr->expr, Expr\Variable::class)
-        );
+        $usedNames = [];
+
+        foreach ((new NodeFinder())->findInstanceOf($statement->expr->expr, Expr\Variable::class) as $variable) {
+            if ($variable instanceof Expr\Variable) {
+                $usedNames[] = $variable->name;
+            }
+        }
 
         return ! in_array($arrayName, $usedNames, true) &&
             ($keyName === null || ! in_array($keyName, $usedNames, true));

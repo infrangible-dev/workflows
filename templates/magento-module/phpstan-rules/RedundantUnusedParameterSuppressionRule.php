@@ -114,10 +114,13 @@ class RedundantUnusedParameterSuppressionRule implements Rule
 
         $nodeFinder = new NodeFinder();
 
-        $usedNames = array_map(
-            static fn(Expr\Variable $variable): mixed => $variable->name,
-            $nodeFinder->findInstanceOf($method->stmts, Expr\Variable::class)
-        );
+        $usedNames = [];
+
+        foreach ($nodeFinder->findInstanceOf($method->stmts, Expr\Variable::class) as $variable) {
+            if ($variable instanceof Expr\Variable) {
+                $usedNames[] = $variable->name;
+            }
+        }
 
         foreach ($method->params as $param) {
             if ($param->var instanceof Expr\Variable && is_string($param->var->name) &&

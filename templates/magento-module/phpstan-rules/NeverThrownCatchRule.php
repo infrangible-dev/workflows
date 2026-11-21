@@ -160,7 +160,8 @@ class NeverThrownCatchRule implements Rule
 
         $nodes = $nodeFinder->find(
             $statements,
-            static fn(Node $node): bool => $node instanceof Expr\MethodCall || $node instanceof Expr\NullsafeMethodCall ||
+            static fn(Node $node): bool => $node instanceof Expr\MethodCall ||
+                $node instanceof Expr\NullsafeMethodCall ||
                 $node instanceof Expr\StaticCall || $node instanceof Expr\New_ || $node instanceof Expr\FuncCall ||
                 $node instanceof Expr\Throw_ || $node instanceof Node\Stmt\Throw_ ||
                 $node instanceof Expr\Closure || $node instanceof Expr\ArrowFunction
@@ -196,7 +197,6 @@ class NeverThrownCatchRule implements Rule
      * Checks if the node is part of one of the closures, whose code does not run in the try block.
      *
      * @param Node $node
-     * @param Scope $scope
      * @param Node[] $closures
      *
      * @return bool

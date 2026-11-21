@@ -25,7 +25,8 @@ use PHPStan\Type\VerbosityLevel;
  * An inline @var tag of an assignment that specifies the type that the assigned value already has.
  *
  * PhpStorm reports it as "@var tag specifies the type already inferred from source code". Like PhpStorm, the declared
- * types count, also those of docblocks, for example "@var Item[] $items" above "$items = $quote->getAllVisibleItems();".
+ * types count, also those of docblocks, for example "@var Item[] $items" above
+ * "$items = $quote->getAllVisibleItems();".
  * Not for calls of functions with template types, whose declaration can depend on the version of Magento.
  *
  * @implements Rule<Stmt\Expression>

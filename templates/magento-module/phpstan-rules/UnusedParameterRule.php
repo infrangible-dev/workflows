@@ -100,11 +100,13 @@ class UnusedParameterRule implements Rule
         $names = [];
 
         foreach ($nodeFinder->findInstanceOf($statements, Expr\Variable::class) as $variable) {
-            $names[] = is_string($variable->name) ? $variable->name : null;
+            if ($variable instanceof Expr\Variable) {
+                $names[] = is_string($variable->name) ? $variable->name : null;
+            }
         }
 
         foreach ($nodeFinder->findInstanceOf($statements, Expr\FuncCall::class) as $call) {
-            if (! $call->name instanceof Node\Name) {
+            if (! $call instanceof Expr\FuncCall || ! $call->name instanceof Node\Name) {
                 continue;
             }
 
@@ -116,7 +118,9 @@ class UnusedParameterRule implements Rule
 
             if ($functionName === 'compact') {
                 foreach ($nodeFinder->findInstanceOf($call->getArgs(), String_::class) as $string) {
-                    $names[] = $string->value;
+                    if ($string instanceof String_) {
+                        $names[] = $string->value;
+                    }
                 }
             }
         }
