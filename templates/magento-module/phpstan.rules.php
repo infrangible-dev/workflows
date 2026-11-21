@@ -17,6 +17,7 @@ require_once __DIR__ . '/phpstan-rules/LoopToArrayMapRule.php';
 require_once __DIR__ . '/phpstan-rules/NeverThrownCatchRule.php';
 require_once __DIR__ . '/phpstan-rules/OnlyImplementationInstanceofRule.php';
 require_once __DIR__ . '/phpstan-rules/OwnThrowsRule.php';
+require_once __DIR__ . '/phpstan-rules/PhpStormThrowTypeExtension.php';
 require_once __DIR__ . '/phpstan-rules/RedundantCastRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantUnusedParameterSuppressionRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantVarTagRule.php';
@@ -45,5 +46,16 @@ return [
         Infrangible\PhpStan\TestDoubleInClosureRule::class,
         // a variable that is assigned once and then only passed by value to one closure
         Infrangible\PhpStan\VariableOnlyUsedInClosureRule::class
+    ],
+    'services' => [
+        // the checked exceptions that the PHP stubs of PhpStorm declare, which PHPStan does not know
+        [
+            'class' => Infrangible\PhpStan\PhpStormThrowTypeExtension::class,
+            'tags'  => [
+                'phpstan.dynamicFunctionThrowTypeExtension',
+                'phpstan.dynamicMethodThrowTypeExtension',
+                'phpstan.dynamicStaticMethodThrowTypeExtension'
+            ]
+        ]
     ]
 ];
