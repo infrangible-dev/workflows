@@ -44,6 +44,7 @@ class RedundantVarTagRule implements Rule
 
     /**
      * @param Stmt\Expression $node
+     * @param Scope $scope
      *
      * @return list<\PHPStan\Rules\IdentifierRuleError>
      */

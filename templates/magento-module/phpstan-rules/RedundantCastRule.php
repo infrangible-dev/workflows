@@ -58,6 +58,7 @@ class RedundantCastRule implements Rule
 
     /**
      * @param Cast $node
+     * @param Scope $scope
      *
      * @return list<\PHPStan\Rules\IdentifierRuleError>
      */
@@ -100,6 +101,7 @@ class RedundantCastRule implements Rule
      * Returns the name of the type of the cast, or null for casts that are not checked (object, unset).
      *
      * @param Cast $node
+     * @param Scope $scope
      *
      * @return string|null
      */
@@ -119,6 +121,7 @@ class RedundantCastRule implements Rule
      * Checks if the value has the type of the cast.
      *
      * @param Cast $node
+     * @param Scope $scope
      * @param Type $type
      *
      * @return TrinaryLogic

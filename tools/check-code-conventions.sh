@@ -451,6 +451,33 @@ if [[ -n "${translations}" ]]; then
   failed=1
 fi
 
+# docblocks of the PHPStan rules without all parameters
+if [[ -d phpstan-rules ]] && ! python3 - <<'PY'
+import pathlib, re, sys
+failed = False
+for path in sorted(pathlib.Path('phpstan-rules').glob('*.php')):
+    text = path.read_text(encoding='utf-8')
+    pattern = (r'(/\*\*(?:(?!\*/).)*\*/)\s*(?:(?:public|protected|private|static|final|abstract)\s+)*'
+               r'function\s+(\w+)\s*\(([^)]*)\)')
+    for match in re.finditer(pattern, text, re.S):
+        documented = re.findall(r'@(?:phpstan-)?param\s+.*?&?(?:\.\.\.)?\$(\w+)', match.group(1))
+        missing = [name for name in re.findall(r'\$(\w+)', match.group(3)) if name not in documented]
+        if missing:
+            line = text[:match.start()].count('\n') + 1
+            print(f'{path}:{line}: {match.group(2)}() does not document ' + ', '.join('$' + n for n in missing))
+            failed = True
+sys.exit(1 if failed else 0)
+PY
+then
+  message="Document every parameter in the docblocks of phpstan-rules (in the workflows repository)"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # html elements without lang attribute
 if grep -rnP --include='*.php' --include='*.phtml' --include='*.html' '<html(?![^>]*\blang=)[\s>/]' src; then
   message="Add a lang attribute to <html>, for example <html lang=\"en\">"

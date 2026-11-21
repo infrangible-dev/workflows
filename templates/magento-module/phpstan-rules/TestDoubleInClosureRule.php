@@ -44,6 +44,7 @@ class TestDoubleInClosureRule implements Rule
 
     /**
      * @param Expr $node
+     * @param Scope $scope
      *
      * @return list<\PHPStan\Rules\IdentifierRuleError>
      */

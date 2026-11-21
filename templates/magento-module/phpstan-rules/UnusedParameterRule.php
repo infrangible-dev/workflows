@@ -42,6 +42,7 @@ class UnusedParameterRule implements Rule
 
     /**
      * @param InClassMethodNode $node
+     * @param Scope $scope
      *
      * @return list<\PHPStan\Rules\IdentifierRuleError>
      */

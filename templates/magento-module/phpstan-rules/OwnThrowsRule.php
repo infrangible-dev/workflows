@@ -44,6 +44,7 @@ class OwnThrowsRule implements Rule
 
     /**
      * @param MethodReturnStatementsNode $node
+     * @param Scope $scope
      *
      * @return list<\PHPStan\Rules\IdentifierRuleError>
      */

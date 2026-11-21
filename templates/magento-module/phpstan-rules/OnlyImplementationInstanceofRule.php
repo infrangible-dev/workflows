@@ -45,6 +45,7 @@ class OnlyImplementationInstanceofRule implements Rule
 
     /**
      * @param Expr $node
+     * @param Scope $scope
      *
      * @return list<\PHPStan\Rules\IdentifierRuleError>
      */
@@ -122,6 +123,7 @@ class OnlyImplementationInstanceofRule implements Rule
      * Returns the class and the value of an instanceof check or of an assertInstanceOf() call of PHPUnit, or null.
      *
      * @param Expr $node
+     * @param Scope $scope
      *
      * @return array{0: Name, 1: Expr}|null
      */

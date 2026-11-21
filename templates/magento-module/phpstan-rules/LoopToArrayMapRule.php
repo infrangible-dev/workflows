@@ -48,6 +48,7 @@ class LoopToArrayMapRule implements Rule
 
     /**
      * @param Node $node
+     * @param Scope $scope
      *
      * @return list<\PHPStan\Rules\IdentifierRuleError>
      */

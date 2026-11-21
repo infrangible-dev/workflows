@@ -40,6 +40,7 @@ class DefaultArgumentRule implements Rule
 
     /**
      * @param Expr\CallLike $node
+     * @param Scope $scope
      *
      * @return list<\PHPStan\Rules\IdentifierRuleError>
      */

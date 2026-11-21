@@ -51,6 +51,7 @@ class NeverThrownCatchRule implements Rule
 
     /**
      * @param TryCatch $node
+     * @param Scope $scope
      *
      * @return list<\PHPStan\Rules\IdentifierRuleError>
      */
@@ -147,6 +148,7 @@ class NeverThrownCatchRule implements Rule
      * be resolved.
      *
      * @param Node[] $statements
+     * @param Scope $scope
      *
      * @return list<Type>|null
      */
@@ -193,6 +195,7 @@ class NeverThrownCatchRule implements Rule
      * Checks if the node is part of one of the closures, whose code does not run in the try block.
      *
      * @param Node $node
+     * @param Scope $scope
      * @param Node[] $closures
      *
      * @return bool
