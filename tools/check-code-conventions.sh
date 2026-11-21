@@ -34,6 +34,9 @@
 # in templates); the escape methods of the blocks are deprecated since Magento 2.4. tools/check-deprecations.sh finds
 # them in classes too, but in templates only if "$block" has a declared type.
 #
+# HTML elements "<html>" have a "lang" attribute, also in strings of PHP code like tests; PhpStorm treats such strings
+# as HTML and reports "Missing required 'lang' attribute".
+#
 # Usage: tools/check-code-conventions.sh <module directory>
 
 set -u
@@ -440,6 +443,17 @@ PYTHON
 if [[ -n "${translations}" ]]; then
   echo "${translations}"
   message="Every text of the module is translated into the 15 languages of src/i18n; the 9 country variants are copies (de_AT, de_CH, de_LU of de_DE, fr_BE, fr_CH, fr_LU of fr_FR, nl_BE of nl_NL, it_CH of it_IT, sv_FI of sv_SE)"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# html elements without lang attribute
+if grep -rnP --include='*.php' --include='*.phtml' --include='*.html' '<html(?![^>]*\blang=)[\s>/]' src; then
+  message="Add a lang attribute to <html>, for example <html lang=\"en\">"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
