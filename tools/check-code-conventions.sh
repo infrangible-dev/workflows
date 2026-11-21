@@ -521,6 +521,38 @@ if grep -nP '^\s*/\*\*\s*@var\b' "${RULES_DIR}"/../*.php; then
   failed=1
 fi
 
+# variables of the shared PHP files of templates/magento-module that the file does not define itself, for example the
+# variables of a required file: PhpStorm reports them as "Undefined variable"
+if ! python3 - <<'PY'
+import os, pathlib, re, sys
+failed = False
+for path in sorted(pathlib.Path(os.environ['RULES_DIR']).parent.glob('*.php')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    code = re.sub(r'/\*.*?\*/|//[^\n]*|\'(?:\\.|[^\'\\])*\'', '', source, flags=re.S)
+    defined = {'this', 'GLOBALS', '_SERVER', '_ENV', '_GET', '_POST'}
+    defined |= set(re.findall(r'(?<![:>\w])\$(\w+)\s*(?:=(?!=)|\.=|\?\?=|\[[^\]]*\]\s*=)', code))
+    defined |= set(re.findall(r'\bas\s+(?:\$\w+\s*=>\s*)?&?\$(\w+)', code))
+    defined |= set(re.findall(r'\bas\s+\$(\w+)\s*=>', code))
+    defined |= set(re.findall(r'catch\s*\([^)$]*\$(\w+)', code))
+    defined |= set(re.findall(r'\bstatic\s+\$(\w+)', code))
+    for parameters in re.findall(r'\b(?:function|fn)\s*&?\w*\s*\(([^)]*)\)', code):
+        defined |= set(re.findall(r'\$(\w+)', parameters))
+    for name in sorted(set(re.findall(r'(?<![:>\w$])\$(\w+)', code)) - defined):
+        line = code[:code.index('$' + name)].count('\n') + 1
+        print(f'{path}:{line}: ${name} is not defined in the file')
+        failed = True
+sys.exit(1 if failed else 0)
+PY
+then
+  message="Define the variables of the shared PHP files in the file itself, PhpStorm does not see the variables of required files"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # docblocks of the PHPStan rules without all parameters
 if ! python3 - <<'PY'
 import os, pathlib, re, sys

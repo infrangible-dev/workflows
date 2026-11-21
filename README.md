@@ -55,7 +55,8 @@ On every push and pull request, for each combination of the matrix:
      which may be older; PHP extensions in the PHP files outside of `src` (composer-require-checker covers `src`):
      the shared files only run in the PHPStan of Magento, whose framework requires them, and suppress
      `PhpComposerExtensionStubsInspection` with that reason, other files need the `ext-*` in composer.json; no inline
-     `@var` tags in the shared PHP files, which PHPStan does not analyse and whose types PhpStorm infers
+     `@var` tags in the shared PHP files, which PHPStan does not analyse and whose types PhpStorm infers, and no
+     variables there that the file does not define itself (PhpStorm does not see the variables of required files)
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes

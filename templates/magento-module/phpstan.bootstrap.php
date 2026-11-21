@@ -30,7 +30,24 @@ $composerLoader = require rtrim($magentoRoot, '/') . '/vendor/autoload.php';
 
 require rtrim($magentoRoot, '/') . '/dev/tests/static/framework/Magento/PhpStan/autoload.php';
 
-spl_autoload_unregister([$generatedCodeAutoloader, 'load']);
+// the generator of the Magento test framework, which the autoloader registers, creates factories without return types
+// and extension attributes without methods: it is replaced below and only used for the other generated classes; found
+// among the autoloaders instead of by its variable in the required file, which PhpStorm does not see
+$generatedCodeAutoloader = null;
+
+foreach (spl_autoload_functions() as $autoloader) {
+    $autoloaderObject = is_array($autoloader) ? $autoloader[ 0 ] : null;
+
+    if ($autoloaderObject instanceof \Magento\Framework\TestFramework\Unit\Autoloader\GeneratedClassesAutoloader) {
+        $generatedCodeAutoloader = $autoloaderObject;
+
+        spl_autoload_unregister($autoloader);
+    }
+}
+
+if ($generatedCodeAutoloader === null) {
+    throw new \LogicException('The PHPStan autoloader of Magento did not register its generator of classes.');
+}
 
 $factoryIo = new \Magento\Framework\Code\Generator\Io(
     new \Magento\Framework\Filesystem\Driver\File(),
