@@ -148,8 +148,11 @@ class OnlyImplementationInstanceofRule implements Rule
 
         $classConstant = $arguments[ 0 ]->value;
 
-        return $classConstant->class instanceof Name && $classConstant->name instanceof Node\Identifier &&
-            $classConstant->name->toLowerString() === 'class' ? [$classConstant->class, $arguments[ 1 ]->value] : null;
+        $class = $classConstant->class;
+        $constantName = $classConstant->name;
+
+        return $class instanceof Name && $constantName instanceof Node\Identifier &&
+            $constantName->toLowerString() === 'class' ? [$class, $arguments[ 1 ]->value] : null;
     }
 
     /**

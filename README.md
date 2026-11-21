@@ -105,7 +105,9 @@ On every push and pull request, for each combination of the matrix:
    assigns one value per element to `$x[]` or `$x[$key]` ("Loop can be converted to an 'array_map()' call"), and
    `@noinspection PhpUnusedParameterInspection` on a method that overrides or implements a method of a parent class
    or an interface, or that uses all its parameters ("Redundant suppression"; PhpStorm reports no unused parameters of
-   such methods), and an inline `@var` tag of an assignment that specifies the type the assigned value already has,
+   such methods), a property or method of the value of a property that only exists after an `instanceof` check of
+   the property ("Potentially polymorphic call"; PhpStorm only narrows variables and properties of `$this`, assign the
+   property to a variable first), and an inline `@var` tag of an assignment that specifies the type the assigned value already has,
    also by docblock ("@var tag specifies the type already inferred from source code"; not for calls with template
    types, which can depend on the Magento version, like `createBlock()` since 2.4.9), and a test double of PHPUnit
    created inside a closure (PhpStorm does not resolve the type of `createStub()` of a generated factory there and

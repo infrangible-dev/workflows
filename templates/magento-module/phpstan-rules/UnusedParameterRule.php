@@ -67,8 +67,10 @@ class UnusedParameterRule implements Rule
         $errors = [];
 
         foreach ($method->params as $param) {
-            if ($param->flags !== 0 || ! $param->var instanceof Expr\Variable || ! is_string($param->var->name) ||
-                in_array($param->var->name, $usedNames, true)) {
+            $variable = $param->var;
+
+            if ($param->flags !== 0 || ! $variable instanceof Expr\Variable || ! is_string($variable->name) ||
+                in_array($variable->name, $usedNames, true)) {
 
                 continue;
             }
@@ -77,7 +79,7 @@ class UnusedParameterRule implements Rule
                 sprintf(
                     'Parameter $%s of %s() is not used. Remove it, or add "@noinspection %s" to the docblock if ' .
                     'the signature is given (for example a method of a plugin).',
-                    $param->var->name,
+                    $variable->name,
                     $method->name->toString(),
                     self::INSPECTION
                 )
@@ -106,11 +108,13 @@ class UnusedParameterRule implements Rule
         }
 
         foreach ($nodeFinder->findInstanceOf($statements, Expr\FuncCall::class) as $call) {
-            if (! $call instanceof Expr\FuncCall || ! $call->name instanceof Node\Name) {
+            $callName = $call instanceof Expr\FuncCall ? $call->name : null;
+
+            if (! $callName instanceof Node\Name) {
                 continue;
             }
 
-            $functionName = $call->name->toLowerString();
+            $functionName = $callName->toLowerString();
 
             if (in_array($functionName, ['func_get_args', 'func_get_arg', 'get_defined_vars'], true)) {
                 $names[] = null;

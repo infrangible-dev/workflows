@@ -57,15 +57,16 @@ class VariableOnlyUsedInClosureRule implements Rule
         $closureCounts = [];
 
         foreach ($node->getStmts() ?? [] as $statement) {
-            if ($statement instanceof Stmt\Expression && $statement->expr instanceof Expr\Assign &&
-                $statement->expr->var instanceof Expr\Variable && is_string($statement->expr->var->name)) {
+            $assign = $statement instanceof Stmt\Expression ? $statement->expr : null;
+            $variable = $assign instanceof Expr\Assign ? $assign->var : null;
 
-                $name = $statement->expr->var->name;
+            if ($assign instanceof Expr\Assign && $variable instanceof Expr\Variable && is_string($variable->name)) {
+                $name = $variable->name;
 
                 $assignLines[ $name ] = $statement->getStartLine();
                 $assignCounts[ $name ] = ($assignCounts[ $name ] ?? 0) + 1;
 
-                $this->collect($statement->expr->expr, $useCounts, $closureCounts);
+                $this->collect($assign->expr, $useCounts, $closureCounts);
 
                 continue;
             }
@@ -76,8 +77,10 @@ class VariableOnlyUsedInClosureRule implements Rule
         $parameterNames = [];
 
         foreach ($node->getParams() as $param) {
-            if ($param->var instanceof Expr\Variable && is_string($param->var->name)) {
-                $parameterNames[] = $param->var->name;
+            $variable = $param->var;
+
+            if ($variable instanceof Expr\Variable && is_string($variable->name)) {
+                $parameterNames[] = $variable->name;
             }
         }
 

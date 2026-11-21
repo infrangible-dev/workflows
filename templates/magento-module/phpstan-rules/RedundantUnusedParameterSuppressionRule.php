@@ -134,8 +134,10 @@ class RedundantUnusedParameterSuppressionRule implements Rule
         }
 
         foreach ($method->params as $param) {
-            if ($param->var instanceof Expr\Variable && is_string($param->var->name) &&
-                ! in_array($param->var->name, $usedNames, true)) {
+            $variable = $param->var;
+
+            if ($variable instanceof Expr\Variable && is_string($variable->name) &&
+                ! in_array($variable->name, $usedNames, true)) {
 
                 return false;
             }

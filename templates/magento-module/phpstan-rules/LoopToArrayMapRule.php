@@ -142,31 +142,32 @@ class LoopToArrayMapRule implements Rule
 
         $arrayName = $this->getEmptyArrayName($previous);
         $statement = $loop->stmts[ 0 ];
+        $assign = $statement instanceof Stmt\Expression ? $statement->expr : null;
+        $target = $assign instanceof Expr\Assign ? $assign->var : null;
 
-        if ($arrayName === null || ! $statement instanceof Stmt\Expression ||
-            ! $statement->expr instanceof Expr\Assign || ! $statement->expr->var instanceof Expr\ArrayDimFetch) {
-
+        if ($arrayName === null || ! $assign instanceof Expr\Assign || ! $target instanceof Expr\ArrayDimFetch) {
             return false;
         }
 
-        $target = $statement->expr->var;
+        $array = $target->var;
+        $dimension = $target->dim;
+        $key = $loop->keyVar;
 
-        if (! $target->var instanceof Expr\Variable || $target->var->name !== $arrayName) {
+        if (! $array instanceof Expr\Variable || $array->name !== $arrayName) {
             return false;
         }
 
-        $keyName = $loop->keyVar instanceof Expr\Variable && is_string($loop->keyVar->name) ? $loop->keyVar->name :
-            null;
+        $keyName = $key instanceof Expr\Variable && is_string($key->name) ? $key->name : null;
 
-        if ($target->dim !== null &&
-            ! ($keyName !== null && $target->dim instanceof Expr\Variable && $target->dim->name === $keyName)) {
+        if ($dimension !== null &&
+            ! ($keyName !== null && $dimension instanceof Expr\Variable && $dimension->name === $keyName)) {
 
             return false;
         }
 
         $usedNames = [];
 
-        foreach ((new NodeFinder())->findInstanceOf($statement->expr->expr, Expr\Variable::class) as $variable) {
+        foreach ((new NodeFinder())->findInstanceOf($assign->expr, Expr\Variable::class) as $variable) {
             if ($variable instanceof Expr\Variable) {
                 $usedNames[] = $variable->name;
             }
@@ -185,18 +186,21 @@ class LoopToArrayMapRule implements Rule
      */
     private function getEmptyArrayName(Node $statement): ?string
     {
-        if (! $statement instanceof Stmt\Expression || ! $statement->expr instanceof Expr\Assign) {
+        $assign = $statement instanceof Stmt\Expression ? $statement->expr : null;
+
+        if (! $assign instanceof Expr\Assign) {
             return null;
         }
 
-        $assign = $statement->expr;
+        $variable = $assign->var;
+        $value = $assign->expr;
 
-        if (! $assign->var instanceof Expr\Variable || ! is_string($assign->var->name) ||
-            ! $assign->expr instanceof Expr\Array_ || count($assign->expr->items) !== 0) {
+        if (! $variable instanceof Expr\Variable || ! is_string($variable->name) || ! $value instanceof Expr\Array_ ||
+            count($value->items) !== 0) {
 
             return null;
         }
 
-        return $assign->var->name;
+        return $variable->name;
     }
 }

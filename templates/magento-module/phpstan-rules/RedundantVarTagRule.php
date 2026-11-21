@@ -53,14 +53,19 @@ readonly class RedundantVarTagRule implements Rule
     public function processNode(Node $node, Scope $scope): array
     {
         $docComment = $node->getDocComment();
+        $assign = $node->expr;
 
-        if ($docComment === null || ! $node->expr instanceof Expr\Assign ||
-            ! $node->expr->var instanceof Expr\Variable || ! is_string($node->expr->var->name)) {
-
+        if ($docComment === null || ! $assign instanceof Expr\Assign) {
             return [];
         }
 
-        $variableName = $node->expr->var->name;
+        $variable = $assign->var;
+
+        if (! $variable instanceof Expr\Variable || ! is_string($variable->name)) {
+            return [];
+        }
+
+        $variableName = $variable->name;
 
         $varTags = $this->fileTypeMapper->getResolvedPhpDoc(
             $scope->getFile(),
@@ -74,12 +79,12 @@ readonly class RedundantVarTagRule implements Rule
             return [];
         }
 
-        if ($this->callsGenericFunction($node->expr->expr, $scope)) {
+        if ($this->callsGenericFunction($assign->expr, $scope)) {
             return [];
         }
 
         $varType = $varTags[ $variableName ]->getType();
-        $valueType = $scope->getType($node->expr->expr);
+        $valueType = $scope->getType($assign->expr);
 
         if (! $varType->isSuperTypeOf($valueType)->yes() || ! $valueType->isSuperTypeOf($varType)->yes()) {
             return [];
@@ -111,20 +116,21 @@ readonly class RedundantVarTagRule implements Rule
     private function callsGenericFunction(Expr $expression, Scope $scope): bool
     {
         $reflection = null;
+        $name = $expression instanceof Expr\MethodCall || $expression instanceof Expr\StaticCall ?
+            $expression->name : null;
+        $class = $expression instanceof Expr\StaticCall ? $expression->class : null;
 
-        if ($expression instanceof Expr\MethodCall && $expression->name instanceof Node\Identifier) {
+        if ($expression instanceof Expr\MethodCall && $name instanceof Node\Identifier) {
             $type = $scope->getType($expression->var);
 
-            if ($type->hasMethod($expression->name->toString())->yes()) {
-                $reflection = $type->getMethod($expression->name->toString(), $scope);
+            if ($type->hasMethod($name->toString())->yes()) {
+                $reflection = $type->getMethod($name->toString(), $scope);
             }
-        } elseif ($expression instanceof Expr\StaticCall && $expression->class instanceof Node\Name &&
-            $expression->name instanceof Node\Identifier) {
+        } elseif ($class instanceof Node\Name && $name instanceof Node\Identifier) {
+            $type = $scope->resolveTypeByName($class);
 
-            $type = $scope->resolveTypeByName($expression->class);
-
-            if ($type->hasMethod($expression->name->toString())->yes()) {
-                $reflection = $type->getMethod($expression->name->toString(), $scope);
+            if ($type->hasMethod($name->toString())->yes()) {
+                $reflection = $type->getMethod($name->toString(), $scope);
             }
         } elseif ($expression instanceof Expr\FuncCall && $expression->name instanceof Node\Name &&
             $this->reflectionProvider->hasFunction($expression->name, $scope)) {
