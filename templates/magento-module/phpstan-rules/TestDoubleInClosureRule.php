@@ -20,8 +20,9 @@ use PHPStan\Rules\RuleErrorBuilder;
  * A test double of PHPUnit created inside a closure.
  *
  * Inside a closure, PhpStorm does not resolve the template type of createStub() and createMock() for generated classes
- * like factories, and reports "Expected parameter of type 'XFactory', 'object&Stub|Stub' provided". Create the test
- * doubles before the closure and pass them with "use".
+ * like factories, and reports "Expected parameter of type 'XFactory', 'object&Stub|Stub' provided". Create the objects
+ * that the closure returns before it, for example in a helper method, and return them with willReturn() instead of a
+ * callback (passing the test doubles with "use" would be reported as "Variable is only used inside closure").
  *
  * @implements Rule<Expr>
  */
@@ -58,8 +59,8 @@ class TestDoubleInClosureRule implements Rule
         return [
             RuleErrorBuilder::message(
                 sprintf(
-                    'Create the test double of %s() before the closure and pass it with "use": PhpStorm does not ' .
-                    'resolve its type inside a closure.',
+                    'Create the test double of %s() outside of the closure, for example in a helper method: ' .
+                    'PhpStorm does not resolve its type inside a closure.',
                     $node->name->toString()
                 )
             )->identifier('infrangible.testDoubleInClosure')->build()

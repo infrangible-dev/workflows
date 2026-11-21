@@ -104,7 +104,9 @@ On every push and pull request, for each combination of the matrix:
    such methods), and an inline `@var` tag of an assignment that specifies the type the assigned value already has,
    also by docblock ("@var tag specifies the type already inferred from source code"), and a test double of PHPUnit
    created inside a closure (PhpStorm does not resolve the type of `createStub()` of a generated factory there and
-   reports "Expected parameter of type 'XFactory', 'object&Stub|Stub' provided"; create it before the closure).
+   reports "Expected parameter of type 'XFactory', 'object&Stub|Stub' provided"; create it outside, for example in a helper method), and a
+   variable that is assigned once and then only passed by value to one closure with `use` ("Variable is only used
+   inside closure"; assign it in the closure).
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
    only JavaScript and styles) skip the step.

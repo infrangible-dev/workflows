@@ -21,6 +21,7 @@ require_once __DIR__ . '/phpstan-rules/RedundantCastRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantUnusedParameterSuppressionRule.php';
 require_once __DIR__ . '/phpstan-rules/RedundantVarTagRule.php';
 require_once __DIR__ . '/phpstan-rules/TestDoubleInClosureRule.php';
+require_once __DIR__ . '/phpstan-rules/VariableOnlyUsedInClosureRule.php';
 
 return [
     'rules' => [
@@ -41,6 +42,8 @@ return [
         // an inline @var tag of an assignment with the type that the assigned value already has
         Infrangible\PhpStan\RedundantVarTagRule::class,
         // a test double of PHPUnit created inside a closure
-        Infrangible\PhpStan\TestDoubleInClosureRule::class
+        Infrangible\PhpStan\TestDoubleInClosureRule::class,
+        // a variable that is assigned once and then only passed by value to one closure
+        Infrangible\PhpStan\VariableOnlyUsedInClosureRule::class
     ]
 ];
