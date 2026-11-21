@@ -35,7 +35,8 @@ if (is_dir($magentoRoot . '/generated/code')) {
 }
 
 return RectorConfig::configure()
-    ->withPaths([$moduleDir . '/src'])
+    // also the PHPStan rules of the workflows, which PhpStorm inspects as copies in the modules
+    ->withPaths([$moduleDir . '/src', dirname(__DIR__) . '/magento-module/phpstan-rules'])
     ->withAutoloadPaths($scan)
     ->withPhpSets(php82: true)
     ->withSkip([

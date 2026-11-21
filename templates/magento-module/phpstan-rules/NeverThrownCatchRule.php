@@ -34,14 +34,14 @@ use PHPStan\Type\Type;
  *
  * @implements Rule<TryCatch>
  */
-class NeverThrownCatchRule implements Rule
+readonly class NeverThrownCatchRule implements Rule
 {
     /** Exceptions that may be caught without a declaration. */
     private const GENERIC = ['exception', 'throwable'];
 
     public function __construct(
-        private readonly ReflectionProvider $reflectionProvider,
-        private readonly DefaultExceptionTypeResolver $exceptionTypeResolver
+        private ReflectionProvider $reflectionProvider,
+        private DefaultExceptionTypeResolver $exceptionTypeResolver
     ) {
     }
 

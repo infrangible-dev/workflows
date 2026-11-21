@@ -28,9 +28,9 @@ use PHPStan\Rules\RuleErrorBuilder;
  *
  * @implements Rule<Expr\CallLike>
  */
-class DefaultArgumentRule implements Rule
+readonly class DefaultArgumentRule implements Rule
 {
-    public function __construct(private readonly ReflectionProvider $reflectionProvider)
+    public function __construct(private ReflectionProvider $reflectionProvider)
     {
     }
 

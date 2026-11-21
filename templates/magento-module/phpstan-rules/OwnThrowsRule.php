@@ -30,11 +30,11 @@ use PHPStan\Type\ObjectType;
  *
  * @implements Rule<MethodReturnStatementsNode>
  */
-class OwnThrowsRule implements Rule
+readonly class OwnThrowsRule implements Rule
 {
     public function __construct(
-        private readonly FileTypeMapper $fileTypeMapper,
-        private readonly DefaultExceptionTypeResolver $exceptionTypeResolver
+        private FileTypeMapper $fileTypeMapper,
+        private DefaultExceptionTypeResolver $exceptionTypeResolver
     ) {
     }
 

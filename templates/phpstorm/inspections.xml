@@ -53,4 +53,11 @@
      * attribute, so it has to stay; Magento's own widget.xml files write it as well.
     -->
     <inspection_tool class="XmlDefaultAttributeValue" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <!--
+     * "Class can be 'readonly'": Magento generates interceptors (for plugins) and proxies as subclasses, and a class that
+     * is not readonly cannot extend a readonly class, so a plugin on a readonly class of a module would end in a fatal
+     * error. The PHPStan rules of the workflows are readonly classes where possible; tools/check-code-conventions.sh
+     * checks them.
+    -->
+    <inspection_tool class="PhpClassCanBeReadonlyInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
 </inspections>
