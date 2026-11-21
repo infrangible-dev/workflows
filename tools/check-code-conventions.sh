@@ -485,6 +485,17 @@ then
   failed=1
 fi
 
+# methods of the PHPStan rules that return a single rule error
+if grep -nP 'function\s+\w+\s*\([^)]*\)\s*:\s*\??\\?(?:[\w\\]*\\)?(?:Identifier)?RuleError\b' "${RULES_DIR}"/*.php; then
+  message="Return the rule errors of RuleErrorBuilder::build() in the array of processNode(), PhpStorm does not resolve its generic type"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # docblock tags in running text
 if grep -rnP --include='*.php' --include='*.phtml' '^\s*\*\s+[^@\s].*(?<![{\w])@(throws|param|return|var)\b' \
   src "${RULES_DIR}"; then

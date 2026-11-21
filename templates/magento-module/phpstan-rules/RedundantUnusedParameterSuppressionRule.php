@@ -57,15 +57,26 @@ class RedundantUnusedParameterSuppressionRule implements Rule
 
         $methodName = $method->name->toString();
 
-        if ($this->overridesMethod($scope, $methodName)) {
-            return [$this->buildError(sprintf('%s() overrides or implements a parent method', $methodName))];
+        $reason = match (true) {
+            $this->overridesMethod($scope, $methodName) => 'overrides or implements a parent method',
+            $this->usesAllParameters($method) => 'uses all its parameters',
+            default => null
+        };
+
+        if ($reason === null) {
+            return [];
         }
 
-        if ($this->usesAllParameters($method)) {
-            return [$this->buildError(sprintf('%s() uses all its parameters', $methodName))];
-        }
-
-        return [];
+        return [
+            RuleErrorBuilder::message(
+                sprintf(
+                    'The suppression of %s is redundant: %s() %s, PhpStorm reports no unused parameter.',
+                    self::INSPECTION,
+                    $methodName,
+                    $reason
+                )
+            )->identifier('infrangible.redundantUnusedParameterSuppression')->build()
+        ];
     }
 
     /**
@@ -131,23 +142,5 @@ class RedundantUnusedParameterSuppressionRule implements Rule
         }
 
         return true;
-    }
-
-    /**
-     * Returns the error for a redundant suppression.
-     *
-     * @param string $reason
-     *
-     * @return IdentifierRuleError
-     */
-    private function buildError(string $reason): IdentifierRuleError
-    {
-        return RuleErrorBuilder::message(
-            sprintf(
-                'The suppression of %s is redundant: %s, PhpStorm reports no unused parameter.',
-                self::INSPECTION,
-                $reason
-            )
-        )->identifier('infrangible.redundantUnusedParameterSuppression')->build();
     }
 }
