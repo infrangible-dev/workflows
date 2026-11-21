@@ -50,9 +50,9 @@ On every push and pull request, for each combination of the matrix:
      de_LU, fr_BE, fr_CH, fr_LU, nl_BE, it_CH and sv_FI are copies; all checked with
      `tools/check-code-conventions.sh <module>`, which can also be run locally; it also checks the docblocks and class
      names of the PHPStan rules in `templates/magento-module/phpstan-rules` (no tags in running text, every parameter
-     documented, imports instead of qualified names, no node classes that php-parser 5 deprecates, because the
-     rules run with php-parser 4 of PHPStan 1 and php-parser 5 of PHPStan 2), not the copies in the modules,
-     which may be older; PHP extensions in the PHP files outside of `src` (composer-require-checker covers `src`):
+     documented, imports instead of qualified names, also in the shared PHP files, where global classes need no
+     leading backslash, no node classes that php-parser 5 deprecates, because the rules run with php-parser 4 of
+     PHPStan 1 and php-parser 5 of PHPStan 2), not the copies in the modules, which may be older; PHP extensions in the PHP files outside of `src` (composer-require-checker covers `src`):
      the shared files only run in the PHPStan of Magento, whose framework requires them, and suppress
      `PhpComposerExtensionStubsInspection` with that reason, other files need the `ext-*` in composer.json; no inline
      `@var` tags in the shared PHP files, which PHPStan does not analyse and whose types PhpStorm infers, and no

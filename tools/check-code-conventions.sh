@@ -204,7 +204,8 @@ fi
 qualifiedImport=$(python3 - <<'PYTHON'
 import os, pathlib, re
 
-for path in sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path(os.environ['RULES_DIR']).glob('*.php'))):
+for path in sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')) +
+                   list(pathlib.Path(os.environ['RULES_DIR']).parent.glob('*.php'))):
     source = path.read_text(encoding='utf-8', errors='replace')
     imports = {}
     for match in re.finditer(r'^use\s+([\w\\]+)(?:\s+as\s+(\w+))?\s*;', source, re.M):
@@ -237,9 +238,11 @@ fi
 qualifiedName=$(python3 - <<'PYTHON'
 import os, pathlib, re
 
-# also the PHPStan rules copied from the workflows, which PhpStorm inspects as part of the module
+# also the PHPStan rules and the shared PHP files of the workflows (checked there, not the copies in the module, which
+# may be older), which PhpStorm inspects as part of the module
+sharedPaths = sorted(pathlib.Path(os.environ['RULES_DIR']).parent.glob('*.php'))
 paths = sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('src').rglob('*.phtml')) +
-               list(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')))
+               list(pathlib.Path(os.environ['RULES_DIR']).glob('*.php'))) + sharedPaths
 
 # classes of the module by namespace: their short names are taken in files of the same namespace
 namespaceClasses = {}
@@ -290,7 +293,11 @@ for path in paths:
         code = re.sub(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"", "''", line)
         if not re.match(r'\s*(\*|/\*\*)', line):
             code = code.split('//', 1)[0]
-        for match in re.finditer(r'(?<![\w\\$])\\([A-Za-z_]\w*(?:\\[A-Za-z_]\w*)+)', code):
+        # in the shared files without namespace, also global classes: their leading backslash is not needed
+        pattern = r'(?<![\w\\$])\\([A-Za-z_]\w*(?:\\[A-Za-z_]\w*)+)'
+        if path in sharedPaths and not namespace:
+            pattern = r'(?<![\w\\$])\\([A-Z]\w*(?:\\[A-Za-z_]\w*)*)(?!\s*\()'
+        for match in re.finditer(pattern, code):
             name = match.group(1)
             short = name.rsplit('\\', 1)[-1].lower()
             if short in taken and taken[short] != name.lower():

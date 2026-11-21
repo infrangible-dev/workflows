@@ -24,6 +24,16 @@ declare(strict_types=1);
  * @license     http://www.opensource.org/licenses/mit-license.php MIT
  */
 
+use Magento\Framework\Api\Code\Generator\ExtensionAttributesGenerator;
+use Magento\Framework\Api\Code\Generator\ExtensionAttributesInterfaceGenerator;
+use Magento\Framework\Api\ExtensionAttribute\Config;
+use Magento\Framework\Api\ExtensionAttribute\Config\Converter;
+use Magento\Framework\Code\Generator\Io;
+use Magento\Framework\Filesystem\Driver\File;
+use Magento\Framework\ObjectManager\Code\Generator\Factory;
+use Magento\Framework\Reflection\TypeProcessor;
+use Magento\Framework\TestFramework\Unit\Autoloader\GeneratedClassesAutoloader;
+
 $magentoRoot = getenv('MAGENTO_ROOT') ?: '/var/www/magento';
 
 $composerLoader = require rtrim($magentoRoot, '/') . '/vendor/autoload.php';
@@ -38,7 +48,7 @@ $generatedCodeAutoloader = null;
 foreach (spl_autoload_functions() as $autoloader) {
     $autoloaderObject = is_array($autoloader) ? $autoloader[ 0 ] : null;
 
-    if ($autoloaderObject instanceof \Magento\Framework\TestFramework\Unit\Autoloader\GeneratedClassesAutoloader) {
+    if ($autoloaderObject instanceof GeneratedClassesAutoloader) {
         $generatedCodeAutoloader = $autoloaderObject;
 
         spl_autoload_unregister($autoloader);
@@ -46,11 +56,11 @@ foreach (spl_autoload_functions() as $autoloader) {
 }
 
 if ($generatedCodeAutoloader === null) {
-    throw new \LogicException('The PHPStan autoloader of Magento did not register its generator of classes.');
+    throw new LogicException('The PHPStan autoloader of Magento did not register its generator of classes.');
 }
 
-$factoryIo = new \Magento\Framework\Code\Generator\Io(
-    new \Magento\Framework\Filesystem\Driver\File(),
+$factoryIo = new Io(
+    new File(),
     TESTS_TEMP_DIR . '/phpstan/generated'
 );
 
@@ -64,7 +74,7 @@ $extensionAttributes = static function () use ($magentoRoot): array {
 
     if ($attributes === null) {
         $attributes = [];
-        $converter = new \Magento\Framework\Api\ExtensionAttribute\Config\Converter();
+        $converter = new Converter();
         $root = rtrim($magentoRoot, '/');
         $files = array_merge(
             glob($root . '/vendor/*/*/etc/extension_attributes.xml') ?: [],
@@ -116,10 +126,10 @@ $generateExtensionAttributes = static function (string $className) use (
         // the constructor, which needs the reader and the cache of the object manager; the generator only calls get()
         // without a path, which returns the merged data
         try {
-            $config = (new \ReflectionClass(\Magento\Framework\Api\ExtensionAttribute\Config::class))
+            $config = (new ReflectionClass(Config::class))
                 ->newInstanceWithoutConstructor();
-        } catch (\ReflectionException $exception) {
-            throw new \LogicException(
+        } catch (ReflectionException $exception) {
+            throw new LogicException(
                 'The configuration of the extension attributes cannot be created: ' . $exception->getMessage(),
                 0,
                 $exception
@@ -129,12 +139,12 @@ $generateExtensionAttributes = static function (string $className) use (
         $config->merge($extensionAttributes());
 
         $generator = $isInterface ?
-            new \Magento\Framework\Api\Code\Generator\ExtensionAttributesInterfaceGenerator(
+            new ExtensionAttributesInterfaceGenerator(
                 $config,
                 $sourceClassName,
                 $className,
                 $factoryIo
-            ) : new \Magento\Framework\Api\Code\Generator\ExtensionAttributesGenerator(
+            ) : new ExtensionAttributesGenerator(
                 $config,
                 $sourceClassName,
                 $className,
@@ -142,12 +152,12 @@ $generateExtensionAttributes = static function (string $className) use (
             );
 
         // the generator gets its type processor from the object manager, which does not exist here
-        \Closure::bind(
+        Closure::bind(
             function (): void {
-                $this->typeProcessor = new \Magento\Framework\Reflection\TypeProcessor();
+                $this->typeProcessor = new TypeProcessor();
             },
             $generator,
-            \Magento\Framework\Api\Code\Generator\ExtensionAttributesGenerator::class
+            ExtensionAttributesGenerator::class
         )();
 
         try {
@@ -200,7 +210,7 @@ spl_autoload_register(
 
                 try {
                     if (class_exists($sourceClassName) || interface_exists($sourceClassName)) {
-                        (new \Magento\Framework\ObjectManager\Code\Generator\Factory(
+                        (new Factory(
                             $sourceClassName,
                             $className,
                             $factoryIo
