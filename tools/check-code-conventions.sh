@@ -560,6 +560,84 @@ then
   failed=1
 fi
 
+# checked exceptions in the shared PHP files of templates/magento-module, which PHPStan does not analyse: calls of
+# methods that the PHP stubs of PhpStorm declare with a checked exception (phpstan-rules/phpstorm-throws.php) on
+# objects of the classes that the file creates have to be caught, or declared in the throws tag of the documented
+# function or closure around them ("PHPDoc comment doesn't contain all the necessary throws tags")
+if ! python3 - <<'PY'
+import os, pathlib, re, sys
+rules = pathlib.Path(os.environ['RULES_DIR'])
+throws = (rules / 'phpstorm-throws.php').read_text(encoding='utf-8')
+section = lambda name: re.search(r"'" + name + r"' => \[\n(.*?)\n    \]", throws, re.S).group(1)
+methods = {key.replace('\\\\', '\\'): re.findall(r"'([^']+)'", values)
+           for key, values in re.findall(r"'([^']+)' => \[([^\]]*)\]", section('methods'))}
+parents = {key.replace('\\\\', '\\'): value.replace('\\\\', '\\')
+           for key, value in re.findall(r"'([^']+)' => '([^']+)'", section('parents'))}
+
+def block_end(code, start):
+    depth = 0
+    for position in range(start, len(code)):
+        depth += {'{': 1, '}': -1}.get(code[position], 0)
+        if depth == 0 and code[position] == '}':
+            return position
+    return len(code)
+
+failed = False
+for path in sorted(rules.parent.glob('*.php')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    # comments and strings blanked out with the same length, docblocks kept apart
+    code = re.sub(r'/\*.*?\*/|//[^\n]*|\'(?:\\.|[^\'\\])*\'|"(?:\\.|[^"\\])*"',
+                  lambda m: re.sub(r'[^\n]', ' ', m.group(0)), source, flags=re.S)
+    imports = {(alias or name.rsplit('\\', 1)[-1]).lower(): name.lower()
+               for name, alias in re.findall(r'^use\s+([\w\\]+)(?:\s+as\s+(\w+))?\s*;', code, re.M)}
+    classes = {imports.get(name.lower(), name.lower()) for name in re.findall(r'\bnew\s+\\?([\w\\]+)', code)}
+    # documented functions and closures: body range and the exceptions of their throws tags
+    documented = []
+    for match in re.finditer(r'(/\*\*.*?\*/)\s*[^;{]*?\bfunction\b[^{;]*\{', source, re.S):
+        tags = {imports.get(n.lower(), n.lower()).lstrip('\\').rsplit('\\', 1)[-1]
+                for n in re.findall(r'@throws\s+\\?([\w\\]+)', match.group(1))}
+        documented.append((match.end() - 1, block_end(code, match.end() - 1), tags))
+    # try blocks: body range and the caught exceptions
+    tries = []
+    for match in re.finditer(r'\btry\s*\{', code):
+        end = block_end(code, match.end() - 1)
+        caught = {imports.get(n.lower(), n.lower()).lstrip('\\').rsplit('\\', 1)[-1]
+                  for n in re.findall(r'catch\s*\(\s*([\w\\|\s]+?)\s*\$', code[end:end + 2000].split('finally')[0])
+                  for n in [x.strip() for x in n.split('|')] if n}
+        tries.append((match.end() - 1, end, caught))
+    for match in re.finditer(r'->\s*(\w+)\s*\(', code):
+        exceptions = set()
+        for name in classes:
+            seen = set()
+            while name and name not in seen:
+                exceptions.update(methods.get(f'{name}::{match.group(1).lower()}', []))
+                seen.add(name)
+                name = parents.get(name)
+        position = match.start()
+        for exception in sorted(exceptions):
+            short = exception.rsplit('\\', 1)[-1]
+            handled = {'exception', 'throwable', short}
+            if any(start < position < end and handled & caught for start, end, caught in tries):
+                continue
+            inner = [d for d in documented if d[0] < position < d[1]]
+            if inner and short in max(inner, key=lambda d: d[0])[2]:
+                continue
+            if not inner:
+                continue
+            print(f'{path}:{code.count(chr(10), 0, position) + 1}: {match.group(1)}() throws {exception}')
+            failed = True
+sys.exit(1 if failed else 0)
+PY
+then
+  message="Catch the checked exceptions of the PHP functions in the shared PHP files, or declare them in the throws tag"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # docblocks of the PHPStan rules without all parameters
 if ! python3 - <<'PY'
 import os, pathlib, re, sys

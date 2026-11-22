@@ -161,6 +161,24 @@ def main() -> None:
         else:
             methods[f'{owner}::{name}'.lower()] = names
 
+    # parent classes of the classes that inherit listed methods, for checks by the class of an object (DOMDocument
+    # inherits appendChild() of DOMNode)
+    owners = {key.split('::')[0] for key in methods}
+
+    def inherits(name: str) -> bool:
+        seen = set()
+
+        while name and name not in seen:
+            if name in owners:
+                return True
+
+            seen.add(name)
+            name = parents.get(name)
+
+        return False
+
+    inherited = {name: parent for name, parent in parents.items() if parent and inherits(parent)}
+
     def php_array(entries: dict[str, list[str]]) -> str:
         return ''.join(
             f"        '{key.replace(chr(92), chr(92) * 2)}' => [" +
@@ -180,6 +198,11 @@ def main() -> None:
         "return [\n"
         "    'functions' => [\n" + php_array(functions) + "    ],\n"
         "    'methods' => [\n" + php_array(methods) + "    ],\n"
+        "    // parent classes of the classes that inherit methods of the list\n"
+        "    'parents' => [\n" +
+        ''.join(f"        '{k.replace(chr(92), chr(92) * 2)}' => '{v.replace(chr(92), chr(92) * 2)}',\n"
+                for k, v in sorted(inherited.items())) +
+        "    ],\n"
         "    // functions whose declared result can be false or null, so that casting it is not redundant\n"
         "    'nullable_returns' => [\n" +
         ''.join(f"        '{n.replace(chr(92), chr(92) * 2)}',\n" for n in sorted(set(nullable_returns))) +
@@ -188,7 +211,7 @@ def main() -> None:
         encoding='utf-8'
     )
 
-    print(f'{len(functions)} functions, {len(methods)} methods, {len(set(nullable_returns))} nullable results: {target}')
+    print(f'{len(functions)} functions, {len(methods)} methods, {len(inherited)} parents, {len(set(nullable_returns))} nullable results: {target}')
 
 
 if __name__ == '__main__':

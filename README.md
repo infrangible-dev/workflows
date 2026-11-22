@@ -56,7 +56,10 @@ On every push and pull request, for each combination of the matrix:
      the shared files only run in the PHPStan of Magento, whose framework requires them, and suppress
      `PhpComposerExtensionStubsInspection` with that reason, other files need the `ext-*` in composer.json; no inline
      `@var` tags in the shared PHP files, which PHPStan does not analyse and whose types PhpStorm infers, and no
-     variables there that the file does not define itself (PhpStorm does not see the variables of required files)
+     variables there that the file does not define itself (PhpStorm does not see the variables of required files);
+     calls in the shared PHP files of methods that the stubs of PhpStorm declare with a checked exception (on
+     objects of the classes the file creates, with the `parents` of `phpstorm-throws.php` for inherited methods) are
+     caught or declared in the throws tag of the documented function or closure around them
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes
@@ -128,7 +131,7 @@ On every push and pull request, for each combination of the matrix:
    stubs of PhpStorm declare to PHP's functions and methods, for example `DOMException` of `DOMDocument::saveXML()`,
    so that missing `@throws` tags are reported as in PhpStorm ("PHPDoc comment doesn't contain all the necessary
    @throws tags"). `tools/generate-phpstorm-throws.py <phpstorm-stubs>` generates its list
-   `phpstan-rules/phpstorm-throws.php` (also the functions with results that can be false or null) from a checkout of
+   `phpstan-rules/phpstorm-throws.php` (also the functions with results that can be false or null, and the parent classes of the classes that inherit listed methods) from a checkout of
    https://github.com/JetBrains/phpstorm-stubs.
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
