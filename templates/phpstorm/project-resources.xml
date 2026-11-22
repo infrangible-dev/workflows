@@ -1,7 +1,8 @@
 <!--
  * XML schema catalog (urn:magento:...) for .idea/misc.xml, generated with
  * bin/magento dev:urn-catalog:generate in Magento 2.4.8 and relative to the vendor directory of the module.
- * urn:magento:framework:ObjectManager/etc/config.xsd points to a corrected copy in schemas, see there.
+ * urn:magento:framework:ObjectManager/etc/config.xsd and urn:magento:framework:View/Layout/etc/elements.xsd point to
+ * corrected copies in schemas, see there.
 -->
   <component name="ProjectResources">
     <resource url="urn:magento:framework:ObjectManager/etc/config.xsd" location="$PROJECT_DIR$/../workflows/templates/phpstorm/schemas/ObjectManager/config.xsd"/>
@@ -134,7 +135,7 @@
     <resource url="urn:magento:module:Magento_Ui:view/base/ui_component/etc/definition/listingToolbar.xsd" location="$PROJECT_DIR$/vendor/magento/module-ui/view/base/ui_component/etc/definition/listingToolbar.xsd"/>
     <resource url="urn:magento:module:Magento_Ui:view/base/ui_component/etc/definition/dataProvider.xsd" location="$PROJECT_DIR$/vendor/magento/module-ui/view/base/ui_component/etc/definition/dataProvider.xsd"/>
     <resource url="urn:magento:module:Magento_Ui:view/base/ui_component/etc/definition/ui_settings.xsd" location="$PROJECT_DIR$/vendor/magento/module-ui/view/base/ui_component/etc/definition/ui_settings.xsd"/>
-    <resource url="urn:magento:framework:View/Layout/etc/elements.xsd" location="$PROJECT_DIR$/vendor/magento/framework/View/Layout/etc/elements.xsd"/>
+    <resource url="urn:magento:framework:View/Layout/etc/elements.xsd" location="$PROJECT_DIR$/../workflows/templates/phpstorm/schemas/View/Layout/elements.xsd"/>
     <resource url="urn:magento:module:Magento_Widget:etc/types.xsd" location="$PROJECT_DIR$/vendor/magento/module-widget/etc/types.xsd"/>
     <resource url="urn:magento:module:Magento_Webapi:etc/webapi_base.xsd" location="$PROJECT_DIR$/vendor/magento/module-webapi/etc/webapi_base.xsd"/>
     <resource url="urn:magento:framework:Search/etc/requests.xsd" location="$PROJECT_DIR$/vendor/magento/framework/Search/etc/requests.xsd"/>

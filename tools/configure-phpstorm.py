@@ -26,7 +26,9 @@ New JavaScript libraries are only loaded when PhpStorm opens the project, so reo
 
 Usage: configure-phpstorm.py [--check] [--ide-profile <file>] <module directory> [<module directory> ...]
 
-    --check                 only report modules whose settings differ, exit with 1 if any differs
+    --check                 only report modules whose settings differ, exit with 1 if any differs (also without
+                            --check: Magento schemas of the module that PhpStorm cannot load and that have no
+                            corrected copy in templates/phpstorm/schemas)
     --ide-profile <file>    also write the inspection settings into this IDE profile, for example
                             /mnt/c/Users/<user>/AppData/Roaming/JetBrains/PhpStorm<version>/inspection/Magento.xml;
                             PhpStorm saves IDE profiles itself, so close it before using this option; a missing
@@ -290,6 +292,26 @@ def apply_js_library_mappings(mappings: str, names: list[str]) -> str:
     return mappings.replace(project.group(0), '<file url="PROJECT" libraries="{' + ", ".join(libraries) + '}" />', 1)
 
 
+def uncorrected_schemas(directory: Path, resources: str) -> list[str]:
+    """Returns the Magento schemas of the module's vendor folder that PhpStorm cannot load and the catalog does not map
+    to a corrected copy: a type in xs:redefine has to extend or restrict itself, which Magento does not always do
+    (Xerces in PhpStorm rejects such a schema in every file that uses it, libxml in Magento accepts it)."""
+    vendor = directory / "vendor" / "magento"
+    if not vendor.is_dir():
+        return []
+    found = []
+    for xsd in sorted(list((vendor / "framework").rglob("*.xsd")) + list(vendor.glob("module-*/etc/**/*.xsd"))):
+        source = xsd.read_text(encoding="utf-8", errors="replace")
+        for redefine in re.finditer(r"<xs:redefine\b.*?</xs:redefine>", source, re.S):
+            for type_match in re.finditer(r'<xs:(complexType|simpleType)\s+name="([^"]+)".*?</xs:\1>',
+                                          redefine.group(0), re.S):
+                bases = re.findall(r'<xs:(?:extension|restriction)\s+base="([^"]+)"', type_match.group(0))
+                location = "$PROJECT_DIR$/" + xsd.relative_to(directory).as_posix()
+                if bases and bases[0] != type_match.group(2) and f'location="{location}"' in resources:
+                    found.append(f"{xsd.relative_to(directory)}: type {type_match.group(2)} extends {bases[0]}")
+    return found
+
+
 def apply_component(misc: str, name: str, component: str) -> str:
     pattern = re.compile(r'[ \t]*<component name="' + name + r'">.*?</component>\n', re.S)
     if pattern.search(misc):
@@ -320,6 +342,7 @@ def main() -> int:
     index = index + library_folders(libraries, index)
     unchecked = unchecked_exceptions()
     outdated = False
+    schema_problems = False
 
     for directory in directories:
         idea = directory / ".idea"
@@ -343,6 +366,9 @@ def main() -> int:
         files[idea / "jsLibraryMappings.xml"] = lambda s: apply_js_library_mappings(s, list(libraries))
         for iml in sorted(idea.glob("*.iml")):
             files[iml] = lambda s: apply_folders(s, index, exclude, directory)
+        for schema in uncorrected_schemas(directory, resources):
+            print(f"Schema without corrected copy in templates/phpstorm/schemas: {schema}")
+            schema_problems = True
         for path, update in files.items():
             current, line_ending = read_file(path)
             updated = update(current)
@@ -372,7 +398,7 @@ def main() -> int:
                 write_file(ide_profile, updated, line_ending)
                 print(f"Updated: {ide_profile}")
 
-    return 1 if check and outdated else 0
+    return 1 if (check and outdated) or schema_problems else 0
 
 
 if __name__ == "__main__":

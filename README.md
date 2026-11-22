@@ -316,6 +316,8 @@ it, so PhpStorm does not take `google.maps.Map` for the built-in `Map` of JavaSc
 `$PROJECT_DIR$/../workflows/templates/phpstorm/schemas` instead of the `vendor` folder. Magento's
 `ObjectManager/etc/config.xsd` (all `di.xml` files) redefines the type `string` without extending it, which Xerces
 rejects ("'extension' does not have a 'base' attribute that refers to the redefined element"), while libxml in Magento
-accepts it; the copy extends `string` itself.
+accepts it; the copy extends `string` itself. `View/Layout/etc/elements.xsd` (all layout files with arguments) does the
+same with the type `object`. `tools/configure-phpstorm.py` reports Magento schemas in the `vendor` folder of a module
+that redefine a type without extending it and have no corrected copy.
 
 To change an inspection for all modules, add it to `inspections.xml` with a comment why, and run the script.
