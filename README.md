@@ -131,7 +131,9 @@ On every push and pull request, for each combination of the matrix:
    `@noinspection PhpMissingParentConstructorInspection` with a reason). `PhpStormThrowTypeExtension` adds the checked exceptions that the PHP
    stubs of PhpStorm declare to PHP's functions and methods, for example `DOMException` of `DOMDocument::saveXML()`,
    so that missing `@throws` tags are reported as in PhpStorm ("PHPDoc comment doesn't contain all the necessary
-   @throws tags"). `tools/generate-phpstorm-throws.py <phpstorm-stubs>` generates its list
+   @throws tags"); for other code it counts only the exceptions of the called method's own `@throws` tag (or of its
+   parent with `@inheritDoc`), not those PHPStan inherits from a parent method, which PhpStorm reports as "Exception is
+   never thrown in the function" (for example `Collection::addFieldToFilter()` for its override in `AbstractDb`). `tools/generate-phpstorm-throws.py <phpstorm-stubs>` generates its list
    `phpstan-rules/phpstorm-throws.php` (also the functions with results that can be false or null, and the parent
    classes of the classes that inherit listed methods) from a checkout of https://github.com/JetBrains/phpstorm-stubs.
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a

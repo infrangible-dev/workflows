@@ -171,6 +171,8 @@ readonly class OwnThrowsRule implements Rule
 
         $docComment = $method->getDocComment();
 
-        return $docComment !== null && str_contains($docComment, '@throws');
+        // PhpStorm takes the throws tags of the parent method with inheritDoc
+        return $docComment !== null &&
+            (str_contains($docComment, '@throws') || stripos($docComment, 'inheritdoc') !== false);
     }
 }

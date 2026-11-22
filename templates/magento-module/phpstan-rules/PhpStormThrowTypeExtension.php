@@ -26,12 +26,17 @@ use PHPStan\Type\Type;
 use PHPStan\Type\TypeCombinator;
 
 /**
- * Adds the checked exceptions that the PHP stubs of PhpStorm declare to the throw types of PHP's functions and methods.
+ * Makes the throw types of called functions and methods the same as in PhpStorm.
  *
- * PhpStorm requires them in the throws tag of the calling method (it reports "PHPDoc comment doesn't contain all the
- * necessary throws tags"), PHPStan does not know some of them, for example DOMException of DOMDocument::saveXML().
- * With this extension, PHPStan reports them as missing as well. The exceptions are listed in phpstorm-throws.php, which
- * tools/generate-phpstorm-throws.py generates from the stubs.
+ * PHP's functions and methods get the checked exceptions that the PHP stubs of PhpStorm declare: PhpStorm requires
+ * them in the throws tag of the calling method (it reports "PHPDoc comment doesn't contain all the necessary throws
+ * tags"), PHPStan does not know some of them, for example DOMException of DOMDocument::saveXML(). The exceptions are
+ * listed in phpstorm-throws.php, which tools/generate-phpstorm-throws.py generates from the stubs.
+ *
+ * Methods of other code only throw the exceptions of their own throws tag, or of the parent method with inheritDoc:
+ * PHPStan inherits the throws tag of a parent method, PhpStorm does not (for example the tag of
+ * Magento\Framework\Data\Collection::addFieldToFilter() for its override in AbstractDb, which declares none). Without
+ * this, PHPStan requires a throws tag that PhpStorm reports as "Exception is never thrown in the function".
  */
 class PhpStormThrowTypeExtension implements
     DynamicFunctionThrowTypeExtension,
@@ -63,7 +68,8 @@ class PhpStormThrowTypeExtension implements
 
     public function isMethodSupported(MethodReflection $methodReflection): bool
     {
-        return isset($this->getThrows()['methods'][ $this->getMethodKey($methodReflection) ]);
+        return isset($this->getThrows()['methods'][ $this->getMethodKey($methodReflection) ]) ||
+            $this->inheritsThrowType($methodReflection);
     }
 
     public function getThrowTypeFromMethodCall(
@@ -105,10 +111,34 @@ class PhpStormThrowTypeExtension implements
      */
     private function getMethodThrowType(MethodReflection $methodReflection): ?Type
     {
+        if ($this->inheritsThrowType($methodReflection)) {
+            return null;
+        }
+
         return $this->combine(
             $methodReflection->getThrowType(),
             $this->getThrows()['methods'][ $this->getMethodKey($methodReflection) ] ?? []
         );
+    }
+
+    /**
+     * Checks if the throw type of a method that is not part of PHP comes from the throws tag of a parent method only.
+     *
+     * @param MethodReflection $methodReflection
+     *
+     * @return bool
+     */
+    private function inheritsThrowType(MethodReflection $methodReflection): bool
+    {
+        if ($methodReflection->getDeclaringClass()->isInternal() || $methodReflection->getThrowType() === null) {
+            return false;
+        }
+
+        $docComment = $methodReflection->getDocComment();
+
+        // PhpStorm takes the throws tags of the parent method with inheritDoc
+        return $docComment === null ||
+            (! str_contains($docComment, '@throws') && stripos($docComment, 'inheritdoc') === false);
     }
 
     /**
