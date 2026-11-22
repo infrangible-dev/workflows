@@ -57,9 +57,10 @@ On every push and pull request, for each combination of the matrix:
      `PhpComposerExtensionStubsInspection` with that reason, other files need the `ext-*` in composer.json; no inline
      `@var` tags in the shared PHP files, which PHPStan does not analyse and whose types PhpStorm infers, and no
      variables there that the file does not define itself (PhpStorm does not see the variables of required files);
-     calls in the shared PHP files of methods that the stubs of PhpStorm declare with a checked exception (on
-     objects of the classes the file creates, with the `parents` of `phpstorm-throws.php` for inherited methods) are
-     caught or declared in the throws tag of the documented function or closure around them, also in top-level code
+     no calls in the shared PHP files of methods and constructors that the stubs of PhpStorm declare with a checked
+     exception (on objects of the classes the file creates, with the `parents` of `phpstorm-throws.php` for inherited
+     methods), unless the throws tag of the documented function or closure around them declares it: PhpStorm did not
+     apply catch clauses in the closures of `phpstan.bootstrap.php`
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes

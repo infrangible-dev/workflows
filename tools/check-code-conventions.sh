@@ -562,9 +562,10 @@ fi
 
 # checked exceptions in the shared PHP files of templates/magento-module, which PHPStan does not analyse: calls of
 # methods that the PHP stubs of PhpStorm declare with a checked exception (phpstan-rules/phpstorm-throws.php) on
-# objects of the classes that the file creates have to be caught, or declared in the throws tag of the documented
-# function or closure around them ("PHPDoc comment doesn't contain all the necessary throws tags", "Unhandled
-# exception")
+# objects of the classes that the file creates, and their constructors, have to be declared in the throws tag of the
+# documented function or closure around them ("PHPDoc comment doesn't contain all the necessary throws tags",
+# "Unhandled exception"); catching them is not enough: PhpStorm did not apply the catch clauses in the closures of
+# phpstan.bootstrap.php (DOMException, ReflectionException), so these files avoid such calls
 if ! python3 - <<'PY'
 import os, pathlib, re, sys
 rules = pathlib.Path(os.environ['RULES_DIR'])
@@ -598,17 +599,12 @@ for path in sorted(rules.parent.glob('*.php')):
         tags = {imports.get(n.lower(), n.lower()).lstrip('\\').rsplit('\\', 1)[-1]
                 for n in re.findall(r'@throws\s+\\?([\w\\]+)', match.group(1))}
         documented.append((match.end() - 1, block_end(code, match.end() - 1), tags))
-    # try blocks: body range and the caught exceptions
-    tries = []
-    for match in re.finditer(r'\btry\s*\{', code):
-        end = block_end(code, match.end() - 1)
-        caught = {imports.get(n.lower(), n.lower()).lstrip('\\').rsplit('\\', 1)[-1]
-                  for n in re.findall(r'catch\s*\(\s*([\w\\|\s]+?)\s*\$', code[end:end + 2000].split('finally')[0])
-                  for n in [x.strip() for x in n.split('|')] if n}
-        tries.append((match.end() - 1, end, caught))
-    for match in re.finditer(r'->\s*(\w+)\s*\(', code):
+    for match in re.finditer(r'->\s*(\w+)\s*\(|\bnew\s+\\?([\w\\]+)\s*\(', code):
         exceptions = set()
-        for name in classes:
+        if match.group(2):
+            created = imports.get(match.group(2).lower(), match.group(2).lower())
+            exceptions.update(methods.get(f'{created}::__construct', []))
+        for name in classes if match.group(1) else []:
             seen = set()
             while name and name not in seen:
                 exceptions.update(methods.get(f'{name}::{match.group(1).lower()}', []))
@@ -617,19 +613,16 @@ for path in sorted(rules.parent.glob('*.php')):
         position = match.start()
         for exception in sorted(exceptions):
             short = exception.rsplit('\\', 1)[-1]
-            handled = {'exception', 'throwable', short}
-            if any(start < position < end and handled & caught for start, end, caught in tries):
-                continue
             # outside of documented functions and closures, PhpStorm reports it as "Unhandled exception"
             inner = [d for d in documented if d[0] < position < d[1]]
             if inner and short in max(inner, key=lambda d: d[0])[2]:
                 continue
-            print(f'{path}:{code.count(chr(10), 0, position) + 1}: {match.group(1)}() throws {exception}')
+            print(f'{path}:{code.count(chr(10), 0, position) + 1}: {match.group(1) or match.group(2)}() throws {exception}')
             failed = True
 sys.exit(1 if failed else 0)
 PY
 then
-  message="Catch the checked exceptions of the PHP functions in the shared PHP files, or declare them in the throws tag"
+  message="Avoid calls with checked exceptions in the shared PHP files, or declare them in the throws tag"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else

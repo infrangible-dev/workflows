@@ -126,21 +126,19 @@ $generateExtensionAttributes = static function (string $className) use (
     if (! $factoryIo->fileExists($resultFile)) {
         $generatingExtensionAttributes[ $className ] = true;
 
-        // the configuration of the extension attributes, read from the files instead of the cache of Magento: without
-        // the constructor, which needs the reader and the cache of the object manager; the generator only calls get()
-        // without a path, which returns the merged data
-        try {
-            $config = (new ReflectionClass(Config::class))
-                ->newInstanceWithoutConstructor();
-        } catch (ReflectionException $exception) {
-            throw new LogicException(
-                'The configuration of the extension attributes cannot be created: ' . $exception->getMessage(),
-                0,
-                $exception
-            );
-        }
-
-        $config->merge($extensionAttributes());
+        // the configuration of the extension attributes, read from the files instead of the cache of Magento
+        $config = new class ($extensionAttributes()) extends Config {
+            /**
+             * @noinspection PhpMissingParentConstructorInspection The constructor of the parent class reads the
+             *               configuration with the reader and the cache of the object manager, which does not exist here.
+             *
+             * @param array<string, mixed> $attributes
+             */
+            public function __construct(array $attributes)
+            {
+                $this->_data = $attributes;
+            }
+        };
 
         $generator = $isInterface ?
             new ExtensionAttributesInterfaceGenerator(
