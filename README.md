@@ -59,7 +59,7 @@ On every push and pull request, for each combination of the matrix:
      variables there that the file does not define itself (PhpStorm does not see the variables of required files);
      calls in the shared PHP files of methods that the stubs of PhpStorm declare with a checked exception (on
      objects of the classes the file creates, with the `parents` of `phpstorm-throws.php` for inherited methods) are
-     caught or declared in the throws tag of the documented function or closure around them
+     caught or declared in the throws tag of the documented function or closure around them, also in top-level code
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes

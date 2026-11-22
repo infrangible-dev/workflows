@@ -91,18 +91,12 @@ $extensionAttributes = static function () use ($magentoRoot): array {
 
             // Magento merges the files before converting them, the converter keeps only the last element of a type
             foreach ($document->getElementsByTagName('extension_attributes') as $element) {
+                // copied as text: the methods that build documents node by node throw DOMException
+                $xml = $element->C14N();
                 $single = new DOMDocument();
 
-                try {
-                    $single->appendChild($single->createElement('config'))
-                        ->appendChild($single->importNode($element, true));
-                } catch (DOMException $exception) {
-                    // only for invalid names or nodes, a programming error here
-                    throw new LogicException(
-                        sprintf('%s cannot be copied: %s', $file, $exception->getMessage()),
-                        0,
-                        $exception
-                    );
+                if ($xml === false || ! $single->loadXML('<config>' . $xml . '</config>')) {
+                    continue;
                 }
 
                 $attributes = array_replace_recursive($attributes, $converter->convert($single));

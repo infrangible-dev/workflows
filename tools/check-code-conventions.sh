@@ -563,7 +563,8 @@ fi
 # checked exceptions in the shared PHP files of templates/magento-module, which PHPStan does not analyse: calls of
 # methods that the PHP stubs of PhpStorm declare with a checked exception (phpstan-rules/phpstorm-throws.php) on
 # objects of the classes that the file creates have to be caught, or declared in the throws tag of the documented
-# function or closure around them ("PHPDoc comment doesn't contain all the necessary throws tags")
+# function or closure around them ("PHPDoc comment doesn't contain all the necessary throws tags", "Unhandled
+# exception")
 if ! python3 - <<'PY'
 import os, pathlib, re, sys
 rules = pathlib.Path(os.environ['RULES_DIR'])
@@ -619,10 +620,9 @@ for path in sorted(rules.parent.glob('*.php')):
             handled = {'exception', 'throwable', short}
             if any(start < position < end and handled & caught for start, end, caught in tries):
                 continue
+            # outside of documented functions and closures, PhpStorm reports it as "Unhandled exception"
             inner = [d for d in documented if d[0] < position < d[1]]
             if inner and short in max(inner, key=lambda d: d[0])[2]:
-                continue
-            if not inner:
                 continue
             print(f'{path}:{code.count(chr(10), 0, position) + 1}: {match.group(1)}() throws {exception}')
             failed = True
