@@ -131,8 +131,8 @@ On every push and pull request, for each combination of the matrix:
    stubs of PhpStorm declare to PHP's functions and methods, for example `DOMException` of `DOMDocument::saveXML()`,
    so that missing `@throws` tags are reported as in PhpStorm ("PHPDoc comment doesn't contain all the necessary
    @throws tags"). `tools/generate-phpstorm-throws.py <phpstorm-stubs>` generates its list
-   `phpstan-rules/phpstorm-throws.php` (also the functions with results that can be false or null, and the parent classes of the classes that inherit listed methods) from a checkout of
-   https://github.com/JetBrains/phpstorm-stubs.
+   `phpstan-rules/phpstorm-throws.php` (also the functions with results that can be false or null, and the parent
+   classes of the classes that inherit listed methods) from a checkout of https://github.com/JetBrains/phpstorm-stubs.
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
    only JavaScript and styles) skip the step.
