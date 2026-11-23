@@ -136,6 +136,14 @@ jobs:
           composer require --no-interaction --no-progress --working-dir "${RUNNER_TEMP}/rector" "rector/rector:~2.8.0"
           workflows/tools/check-php-syntax.sh module "${MAGENTO_ROOT}" "${RUNNER_TEMP}/rector/vendor/bin/rector"
 
+      - name: Spelling
+        if: matrix.phpcs
+        run: |
+          # words PhpStorm reports as typo, see the script; words of Magento and the modules are in
+          # templates/spelling/words.txt
+          npm install --prefix "${RUNNER_TEMP}/cspell" --no-audit --no-fund "cspell@~10.4.1"
+          workflows/tools/check-spelling.sh module "${RUNNER_TEMP}/cspell/node_modules/.bin/cspell"
+
       - name: Deprecated code
         if: matrix.phpcs
         run: |

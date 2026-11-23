@@ -71,6 +71,12 @@ On every push and pull request, for each combination of the matrix:
      `tools/check-duplicated-code.sh <module> [<phpcpd>]`; move duplicated code into a shared method or base class,
      merge tests that only differ in their data into one test with a data provider; locally, install phpcpd with
      `cosyses PHPCPD 9.2`
+   - correct spelling in code, comments, texts and documentation, like the PhpStorm inspection "Typo", checked with
+     [cspell](https://cspell.org) and `templates/spelling/cspell.json` through
+     `tools/check-spelling.sh <module> [<cspell>]`; translations (`i18n`), generated and minified files are skipped;
+     fix the word, or add a correctly spelled term to `templates/spelling/words.txt`, which
+     `tools/configure-phpstorm.py` also writes into the PhpStorm dictionary; locally, install cspell with
+     `cosyses Node.js 24.13` and `cosyses CSpell 10.4` (Cosyses release after 1.156.0)
    - every class, function and constant used by the module comes from a dependency in its `composer.json`, PHP
      extensions (`ext-<name>`) included, checked with
      [ComposerRequireChecker](https://github.com/maglnet/ComposerRequireChecker) through
@@ -242,7 +248,7 @@ tools/add-return-tags.py ../m2-core/src
 | `unchecked-exceptions.xml` | `.idea/php.xml` (`PhpAnalysisConfiguration`)     | exceptions that need no `@throws` tag       |
 | `js-libraries.xml`       | `.idea/libraries/`, `.idea/jsLibraryMappings.xml`  | Magento's RequireJS, jQuery, ... (`lib/web`), scripts of Magento's modules that modules extend (price box, swatch renderer, ...), the Google Maps API (`stubs/google-maps.d.ts`) |
 | `scopes.xml`             | `.idea/scopes/`                                    | scopes the inspections refer to (shared configuration) |
-| `dictionary.xml`         | `.idea/dictionaries/magento.xml`                   | words of Magento for the spell checker      |
+| `../spelling/words.txt`  | `.idea/dictionaries/magento.xml`                   | words for the spell checker, shared with `tools/check-spelling.sh` |
 
 The folders of the files of `js-libraries.xml` (for example `lib/web/requirejs` with `define()`) are indexed as well:
 PhpStorm's Composer synchronization excludes `vendor/magento/magento2-base`, and files of a JavaScript library in an

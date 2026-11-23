@@ -15,8 +15,9 @@
     - js-libraries.xml: JavaScript libraries (.idea/libraries/<name>.xml), assigned to the project
       (.idea/jsLibraryMappings.xml, merged with libraries assigned there already)
     - scopes.xml: scopes that inspections.xml refers to (.idea/scopes/<name>.xml)
-    - dictionary.xml: words of Magento for the spell checker, for example from class names like
-      ReinitableConfigInterface (.idea/dictionaries/magento.xml; the dictionary "project" of the module stays)
+    - ../spelling/words.txt: words for the spell checker, shared with tools/check-spelling.sh, for example from class
+      names like ReinitableConfigInterface (.idea/dictionaries/magento.xml; the dictionary "project" of the module
+      stays)
     - stubs: declarations for PhpStorm only, added as include path (.idea/php.xml), relative to the module, so the
       workflows repository has to be next to the modules
 
@@ -90,7 +91,15 @@ def inspection_tools() -> list[tuple[str, str]]:
 
 
 def dictionary() -> str:
-    return (TEMPLATE_PATH / "dictionary.xml").read_text(encoding="utf-8")
+    """Returns .idea/dictionaries/magento.xml with the words of templates/spelling/words.txt."""
+    source = (TEMPLATE_PATH.parent / "spelling" / "words.txt").read_text(encoding="utf-8")
+    words = sorted({line.strip().lower() for line in source.splitlines() if line.strip() and not line.startswith("#")})
+    lines = "".join(f"      <w>{word}</w>\n" for word in words)
+    return (
+        '<component name="ProjectDictionaryState">\n  <dictionary name="magento">\n    <words>\n'
+        + lines
+        + "    </words>\n  </dictionary>\n</component>\n"
+    )
 
 
 def scopes() -> dict[str, str]:

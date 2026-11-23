@@ -1,0 +1,25 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "dictionaries": [
+        "php", "html", "css", "typescript", "node", "softwareTerms", "fullstack", "companies", "misc", "filetypes",
+        "public-licenses", "infrangible"
+    ],
+    "dictionaryDefinitions": [
+        {
+            "name": "infrangible",
+            "path": "./words.txt",
+            "addWords": true
+        }
+    ],
+    "ignoreRegExpList": [
+        "/infrangible_[a-z0-9_]+/gi",
+        "/[\\w%]*%[0-9A-F]{2}[\\w%]*/gi",
+        "/\\\\x[0-9A-F]{2}/gi",
+        "/%(?:\\d+\\$)?[sdfu]/g"
+    ],
+    "ignorePaths": [
+        "**/i18n/**", "**/*.csv", "**/db_schema_whitelist.json", "**/LICENSE", "**/*.png", "**/*.jpg", "**/*.gif",
+        "**/*.svg", "**/*.woff", "**/*.woff2"
+    ]
+}
