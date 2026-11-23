@@ -48,19 +48,21 @@ On every push and pull request, for each combination of the matrix:
      with `translate` in XML) is translated in `src/i18n` into the 15 languages cs_CZ, da_DK, de_DE, es_ES, fi_FI,
      fr_FR, it_IT, nb_NO, nl_NL, nn_NO, pl_PL, pt_BR, pt_PT, sv_SE and uk_UA; the country variants de_AT, de_CH,
      de_LU, fr_BE, fr_CH, fr_LU, nl_BE, it_CH and sv_FI are copies; all checked with
-     `tools/check-code-conventions.sh <module>`, which can also be run locally; it also checks the docblocks and class
-     names of the PHPStan rules in `templates/magento-module/phpstan-rules` (no tags in running text, every parameter
-     documented, imports instead of qualified names, also in the shared PHP files, where global classes need no
-     leading backslash, no node classes that php-parser 5 deprecates, because the rules run with php-parser 4 of
-     PHPStan 1 and php-parser 5 of PHPStan 2), not the copies in the modules, which may be older; PHP extensions in the PHP files outside of `src` (composer-require-checker covers `src`):
-     the shared files only run in the PHPStan of Magento, whose framework requires them, and suppress
-     `PhpComposerExtensionStubsInspection` with that reason, other files need the `ext-*` in composer.json; no inline
-     `@var` tags in the shared PHP files, which PHPStan does not analyse and whose types PhpStorm infers, and no
-     variables there that the file does not define itself (PhpStorm does not see the variables of required files);
-     no calls in the shared PHP files of methods and constructors that the stubs of PhpStorm declare with a checked
-     exception (on objects of the classes the file creates, with the `parents` of `phpstorm-throws.php` for inherited
-     methods), unless the throws tag of the documented function or closure around them declares it: PhpStorm did not
-     apply catch clauses in the closures of `phpstan.bootstrap.php`
+     `tools/check-code-conventions.sh <module>`, which can also be run locally. In the package
+     [infrangible/phpstan-magento](https://github.com/infrangible-dev/phpstan-magento) (composer type
+     `phpstan-extension`), it also checks the PHPStan rules in `src` and the shared PHP files in the root directory
+     (`bootstrap.php`, `versions.php`): no tags in running text, every parameter documented, imports instead of
+     qualified names, also in the shared PHP files, where global classes need no leading backslash, readonly classes,
+     no node classes that php-parser 5 deprecates, because the rules run with php-parser 4 of PHPStan 1 and php-parser
+     5 of PHPStan 2; PHP extensions: the shared files only run in the PHPStan of Magento, whose framework requires them,
+     and suppress `PhpComposerExtensionStubsInspection` with that reason, other PHP files of a module outside of `src`
+     (composer-require-checker covers `src`) need the `ext-*` in composer.json; no inline `@var` tags in the shared PHP
+     files, which PHPStan does not analyse and whose types PhpStorm infers, and no variables there that the file does
+     not define itself (PhpStorm does not see the variables of required files); no calls in the shared PHP files of
+     methods and constructors that the stubs of PhpStorm declare with a checked exception (on objects of the classes
+     the file creates, with the `parents` of `src/phpstorm-throws.php` for inherited methods), unless the throws tag of
+     the documented function or closure around them declares it: PhpStorm did not apply catch clauses in the closures
+     of `bootstrap.php`
    - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes
@@ -90,52 +92,12 @@ On every push and pull request, for each combination of the matrix:
      deprecated class (PhpStorm reports the `use` statement, the check looks up the doc comment of the imported class
      through Magento's autoloader). Suppressions without reason fail,
      suppressions that cover no finding are reported as warnings
-3. PHPStan with the `phpstan.neon` of the module. The template checks `src` and the copied rules in `phpstan-rules`
-   (which PhpStorm inspects as part of the module) at level 9, the `@throws` tags as PhpStorm
-   expects them and typed properties that are read before they are set (`setUp()` of tests and Magento's
-   `_construct()` count as constructors). `phpstan.versions.php` adds what depends on the Magento version of the
-   installation: before 2.4.8, `AbstractModel::_init()` and `load()` do not declare their `LocalizedException`, so a
-   tag that 2.4.8 needs is not reported as too wide there; before 2.4.9, `Escaper::escapeHtml()` declares
-   `string|array` as result also for a string, `phpstan.escaper.stub` declares the types of 2.4.9. Tests may declare
-   `@throws ReflectionException` for reflection on classes they name themselves, which PhpStorm requires and PHPStan
-   knows cannot be thrown. `phpstan.rules.php` adds rules for what PhpStorm checks beyond PHPStan (classes in
-   `phpstan-rules`): a literal as last argument that is the default value of the parameter ("Argument matches the
-   parameter's default value"), checked exceptions have to be in the `@throws` tag of the method itself, also when a parent method
-   declares them (PHPStan inherits the tag, PhpStorm does not, for example in constructors of Magento models), and a
-   catch of a checked exception that no call of the try block declares is reported ("Exception is never thrown in the
-   corresponding try block"; not for `Exception` and `Throwable`, and not with
-   `@noinspection PhpRedundantCatchClauseInspection` on the method or the try), and a cast of a value that already has
-   the type of the cast ("Type cast is redundant"; types of docblocks count, as in PhpStorm, except for calls of methods
-   with a body and without native return type, whose returned types PhpStorm also reads, and except for PHP functions
-   whose result can be false or null in the stubs of PhpStorm, which PHPStan narrows; where PhpStorm still reports
-   a needed cast, keep it with `@noinspection PhpCastIsUnnecessaryInspection`), and an
-   `instanceof` check of a value whose declared type is an interface or abstract class of the module against the only
-   class of the module that implements it, also with PHPUnit's `assertInstanceOf()` ("Condition is always 'true' because '$x' is evaluated at this point";
-   declare the needed methods in the interface instead), and a foreach loop directly after `$x = [];` that only
-   assigns one value per element to `$x[]` or `$x[$key]` ("Loop can be converted to an 'array_map()' call"), and
-   `@noinspection PhpUnusedParameterInspection` on a method that overrides or implements a method of a parent class
-   or an interface, or that uses all its parameters ("Redundant suppression"; PhpStorm reports no unused parameters of
-   such methods), a property or method of the value of a property that only exists after an `instanceof` check of
-   the property ("Potentially polymorphic call"; PhpStorm only narrows variables and properties of `$this`, assign the
-   property to a variable first), and an inline `@var` tag of an assignment that specifies the type the assigned value already has,
-   also by docblock ("@var tag specifies the type already inferred from source code"; not for calls with template
-   types, which can depend on the Magento version, like `createBlock()` since 2.4.9), and a test double of PHPUnit
-   created inside a closure (PhpStorm does not resolve the type of `createStub()` of a generated factory there and
-   reports "Expected parameter of type 'XFactory', 'object&Stub|Stub' provided"; create it outside, for example in a helper method), and a
-   variable that is assigned once and then only passed by value to one closure with `use` ("Variable is only used
-   inside closure"; assign it in the closure), and a parameter that the method does not use ("Unused parameter";
-   not for methods that override another one, methods without statements, which are hooks, and promoted constructor
-   parameters; methods with a given signature, like the methods of plugins, suppress it with
-   `@noinspection PhpUnusedParameterInspection`), and a constructor that does not call the constructor of its parent
-   class ("Missing parent constructor call"; skipping it on purpose needs
-   `@noinspection PhpMissingParentConstructorInspection` with a reason). `PhpStormThrowTypeExtension` adds the checked exceptions that the PHP
-   stubs of PhpStorm declare to PHP's functions and methods, for example `DOMException` of `DOMDocument::saveXML()`,
-   so that missing `@throws` tags are reported as in PhpStorm ("PHPDoc comment doesn't contain all the necessary
-   @throws tags"); for other code it counts only the exceptions of the called method's own `@throws` tag (or of its
-   parent with `@inheritDoc`), not those PHPStan inherits from a parent method, which PhpStorm reports as "Exception is
-   never thrown in the function" (for example `Collection::addFieldToFilter()` for its override in `AbstractDb`). `tools/generate-phpstorm-throws.py <phpstorm-stubs>` generates its list
-   `phpstan-rules/phpstorm-throws.php` (also the functions with results that can be false or null, and the parent
-   classes of the classes that inherit listed methods) from a checkout of https://github.com/JetBrains/phpstorm-stubs.
+3. PHPStan with the `phpstan.neon` of the module, which includes `magento.neon` of
+   [infrangible/phpstan-magento](https://github.com/infrangible-dev/phpstan-magento) from the Magento installation: level
+   9, the `@throws` tags as PhpStorm expects them, typed properties that are read before they are set, the classes that
+   Magento generates, the differences between the Magento versions and rules for what PhpStorm checks beyond PHPStan
+   (see the README of the package). The workflow installs the package in the version of the module's `require-dev`,
+   which Composer does not install for a required package.
 4. PHPUnit with the `phpunit.xml` of the module. PHPUnit's own notices and deprecations fail the step, for example a
    mock object without expectations (PHPUnit 12, use a stub instead). Modules without `src/Test/Unit` (no PHP logic, for example
    only JavaScript and styles) skip the step.
@@ -182,8 +144,8 @@ The matrix can be changed with the input `matrix` (JSON list of objects with `ma
 `phpcs`).
 
 The module needs `phpcs.xml`, `phpstan.neon` and `phpunit.xml` in its root directory, and the PHPStan and PHPUnit
-configuration have to load the Magento installation from `MAGENTO_ROOT` (see `phpstan.bootstrap.php` and
-`phpunit.bootstrap.php` in [m2-foundation](https://www.infrangible.dev/modules/foundation)).
+configuration have to load the Magento installation from `MAGENTO_ROOT` (see `templates/magento-module`), and
+`infrangible/phpstan-magento` in `require-dev`.
 
 ## Shared module configuration
 
@@ -192,9 +154,7 @@ configuration have to load the Magento installation from `MAGENTO_ROOT` (see `ph
 | File                       | Purpose                                                                  |
 |----------------------------|--------------------------------------------------------------------------|
 | `phpcs.xml`                | Magento2 coding standard and PHP 8.2 compatibility for `src`             |
-| `phpstan.neon`             | PHPStan level 9 for `src`, including missing or too wide `@throws` tags  |
-| `phpstan.bootstrap.php`    | loads the PHPStan autoloader of Magento from `MAGENTO_ROOT`              |
-| `phpstan.rules.php`        | registers the PHPStan rules of `phpstan-rules` for checks of PhpStorm    |
+| `phpstan.neon`             | PHPStan for `src` with the configuration of `infrangible/phpstan-magento` |
 | `phpunit.xml`              | unit tests in `src/Test/Unit`                                            |
 | `phpunit.bootstrap.php`    | loads the bootstrap of the Magento unit tests from `MAGENTO_ROOT`        |
 | `.github/workflows/ci.yml` | calls the workflow of this repository                                    |
@@ -208,7 +168,11 @@ tools/sync-module-config.sh ../m2-*            # add or update the files in all 
 tools/sync-module-config.sh --check ../m2-*    # only list modules with missing or outdated files
 ```
 
-Directories without `composer.json` and `src` are skipped.
+Directories without `composer.json` and `src` are skipped. The script also requires
+[infrangible/phpstan-magento](https://github.com/infrangible-dev/phpstan-magento) in `require-dev` of the module, in
+the version of `phpstanPackageVersion` in the script (raise it to move the modules to a new release of the package at
+their next synchronization), and removes the PHPStan files that earlier versions of the templates copied into the
+modules (`phpstan-rules`, `phpstan.bootstrap.php`, ...).
 
 ## Tools
 

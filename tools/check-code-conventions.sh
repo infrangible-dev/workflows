@@ -43,12 +43,19 @@ set -u
 
 moduleDir="${1:?Usage: $0 <module directory>}"
 
-# the PHPStan rules are checked in the templates of the workflows, which tools/sync-module-config.sh copies into the
-# modules: an older copy in a module must not fail its checks before the next synchronization
-RULES_DIR="$(cd "$(dirname "$0")/../templates/magento-module/phpstan-rules" && pwd)"
-export RULES_DIR
-
 cd "${moduleDir}" || exit 1
+
+# the PHPStan rules (src) and the shared PHP files of the modules (bootstrap and configuration files in the root
+# directory) are in the package infrangible/phpstan-magento (composer type phpstan-extension), which runs this script
+# for itself as well; modules check only their own code
+if [[ $(python3 -c 'import json; print(json.load(open("composer.json")).get("type", ""))') == "phpstan-extension" ]]; then
+  RULES_DIR="$(pwd)/src"
+  SHARED_DIR="$(pwd)"
+else
+  RULES_DIR=""
+  SHARED_DIR=""
+fi
+export RULES_DIR SHARED_DIR
 
 failed=0
 
@@ -204,8 +211,8 @@ fi
 qualifiedImport=$(python3 - <<'PYTHON'
 import os, pathlib, re
 
-for path in sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')) +
-                   list(pathlib.Path(os.environ['RULES_DIR']).parent.glob('*.php'))):
+for path in sorted(set(list(pathlib.Path('src').rglob('*.php')) + [path.relative_to(pathlib.Path.cwd()) for path in
+                       (sorted(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')) if os.environ['RULES_DIR'] else []) + (sorted(pathlib.Path(os.environ['SHARED_DIR']).glob('*.php')) if os.environ['SHARED_DIR'] else [])])):
     source = path.read_text(encoding='utf-8', errors='replace')
     imports = {}
     for match in re.finditer(r'^use\s+([\w\\]+)(?:\s+as\s+(\w+))?\s*;', source, re.M):
@@ -238,11 +245,9 @@ fi
 qualifiedName=$(python3 - <<'PYTHON'
 import os, pathlib, re
 
-# also the PHPStan rules and the shared PHP files of the workflows (checked there, not the copies in the module, which
-# may be older), which PhpStorm inspects as part of the module
-sharedPaths = sorted(pathlib.Path(os.environ['RULES_DIR']).parent.glob('*.php'))
-paths = sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('src').rglob('*.phtml')) +
-               list(pathlib.Path(os.environ['RULES_DIR']).glob('*.php'))) + sharedPaths
+# in the package of the PHPStan rules also its shared PHP files in the root directory
+sharedPaths = [path.relative_to(pathlib.Path.cwd()) for path in (sorted(pathlib.Path(os.environ['SHARED_DIR']).glob('*.php')) if os.environ['SHARED_DIR'] else [])]
+paths = sorted(list(pathlib.Path('src').rglob('*.php')) + list(pathlib.Path('src').rglob('*.phtml'))) + sharedPaths
 
 # classes of the module by namespace: their short names are taken in files of the same namespace
 namespaceClasses = {}
@@ -466,9 +471,9 @@ if [[ -n "${translations}" ]]; then
 fi
 
 # PHP extensions in the PHP files outside of src (composer-require-checker checks src): PhpStorm reports "'ext-…' is
-# missing in composer.json". The shared files of templates/magento-module (checked there, not the copies in the modules,
-# which may be older) only run in the PHPStan of Magento, whose framework requires the extensions: they suppress the
-# inspection with a reason; other files of the module need the extension in composer.json
+# missing in composer.json". The shared files of the package infrangible/phpstan-magento (its rules and the files in its
+# root directory) only run in the PHPStan of Magento, whose framework requires the extensions: they suppress the
+# inspection with a reason; other files of a module need the extension in composer.json
 if ! python3 - . <<'PY'
 import json, os, pathlib, re, sys
 extensions = {
@@ -486,14 +491,12 @@ extensions = {
 }
 suppression = re.compile(r'@noinspection\s+PhpComposerExtensionStubsInspection\b')
 module = pathlib.Path(sys.argv[1])
-templates = pathlib.Path(os.environ['RULES_DIR']).parent
-templateNames = {path.name for path in templates.glob('*.php')}
 composer = json.loads((module / 'composer.json').read_text(encoding='utf-8'))
 required = {name[4:].lower() for section in ('require', 'require-dev') for name in composer.get(section, {})
             if name.startswith('ext-')}
-paths = [(path, True) for path in sorted(templates.glob('*.php')) + sorted(templates.glob('phpstan-rules/*.php'))
-         if path.name != 'phpstorm-throws.php']
-paths += [(path, False) for path in sorted(module.glob('*.php')) if path.name not in templateNames]
+shared = [path for path in (sorted(pathlib.Path(os.environ['SHARED_DIR']).glob('*.php')) if os.environ['SHARED_DIR'] else []) + (sorted(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')) if os.environ['RULES_DIR'] else []) if path.name != 'phpstorm-throws.php']
+paths = [(path, True) for path in shared]
+paths += [(path, False) for path in sorted(module.glob('*.php')) if not shared]
 failed = False
 for path, shared in paths:
     source = path.read_text(encoding='utf-8', errors='replace')
@@ -515,11 +518,11 @@ then
   failed=1
 fi
 
-# inline @var tags in the shared PHP files of templates/magento-module (bootstrap files and configurations): PHPStan does
+# inline @var tags in the shared PHP files of infrangible/phpstan-magento (bootstrap and configuration files): PHPStan does
 # not analyse them, and PhpStorm infers the types, also of the variables of required files ("@var tag specifies the type
 # already inferred from source code")
-if grep -nP '^\s*/\*\*\s*@var\b' "${RULES_DIR}"/../*.php; then
-  message="Remove inline @var tags from the shared PHP files of templates/magento-module, PhpStorm infers the types"
+if [[ -n "${SHARED_DIR}" ]] && grep -nP '^\s*/\*\*\s*@var\b' "${SHARED_DIR}"/*.php; then
+  message="Remove inline @var tags from the shared PHP files, PhpStorm infers the types"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
@@ -528,12 +531,12 @@ if grep -nP '^\s*/\*\*\s*@var\b' "${RULES_DIR}"/../*.php; then
   failed=1
 fi
 
-# variables of the shared PHP files of templates/magento-module that the file does not define itself, for example the
+# variables of the shared PHP files of infrangible/phpstan-magento that the file does not define itself, for example the
 # variables of a required file: PhpStorm reports them as "Undefined variable"
 if ! python3 - <<'PY'
 import os, pathlib, re, sys
 failed = False
-for path in sorted(pathlib.Path(os.environ['RULES_DIR']).parent.glob('*.php')):
+for path in (sorted(pathlib.Path(os.environ['SHARED_DIR']).glob('*.php')) if os.environ['SHARED_DIR'] else []):
     source = path.read_text(encoding='utf-8', errors='replace')
     code = re.sub(r'/\*.*?\*/|//[^\n]*|\'(?:\\.|[^\'\\])*\'', '', source, flags=re.S)
     defined = {'this', 'GLOBALS', '_SERVER', '_ENV', '_GET', '_POST'}
@@ -560,14 +563,16 @@ then
   failed=1
 fi
 
-# checked exceptions in the shared PHP files of templates/magento-module, which PHPStan does not analyse: calls of
-# methods that the PHP stubs of PhpStorm declare with a checked exception (phpstan-rules/phpstorm-throws.php) on
+# checked exceptions in the shared PHP files of infrangible/phpstan-magento, which PHPStan does not analyse: calls of
+# methods that the PHP stubs of PhpStorm declare with a checked exception (src/phpstorm-throws.php) on
 # objects of the classes that the file creates, and their constructors, have to be declared in the throws tag of the
 # documented function or closure around them ("PHPDoc comment doesn't contain all the necessary throws tags",
 # "Unhandled exception"); catching them is not enough: PhpStorm did not apply the catch clauses in the closures of
-# phpstan.bootstrap.php (DOMException, ReflectionException), so these files avoid such calls
+# bootstrap.php (DOMException, ReflectionException), so these files avoid such calls
 if ! python3 - <<'PY'
 import os, pathlib, re, sys
+if not os.environ['RULES_DIR']:
+    sys.exit(0)
 rules = pathlib.Path(os.environ['RULES_DIR'])
 throws = (rules / 'phpstorm-throws.php').read_text(encoding='utf-8')
 section = lambda name: re.search(r"'" + name + r"' => \[\n(.*?)\n    \]", throws, re.S).group(1)
@@ -585,7 +590,7 @@ def block_end(code, start):
     return len(code)
 
 failed = False
-for path in sorted(rules.parent.glob('*.php')):
+for path in (sorted(pathlib.Path(os.environ['SHARED_DIR']).glob('*.php')) if os.environ['SHARED_DIR'] else []):
     source = path.read_text(encoding='utf-8', errors='replace')
     # comments and strings blanked out with the same length, docblocks kept apart
     code = re.sub(r'/\*.*?\*/|//[^\n]*|\'(?:\\.|[^\'\\])*\'|"(?:\\.|[^"\\])*"',
@@ -635,7 +640,7 @@ fi
 if ! python3 - <<'PY'
 import os, pathlib, re, sys
 failed = False
-for path in sorted(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')):
+for path in (sorted(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')) if os.environ['RULES_DIR'] else []):
     text = path.read_text(encoding='utf-8')
     pattern = (r'(/\*\*(?:(?!\*/).)*\*/)\s*(?:(?:public|protected|private|static|final|abstract)\s+)*'
                r'function\s+(\w+)\s*\(([^)]*)\)')
@@ -649,7 +654,7 @@ for path in sorted(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')):
 sys.exit(1 if failed else 0)
 PY
 then
-  message="Document every parameter in the docblocks of phpstan-rules (in the workflows repository)"
+  message="Document every parameter in the docblocks of the PHPStan rules"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
@@ -662,7 +667,7 @@ fi
 readonlyClasses=$(python3 - <<'PYTHON'
 import os, pathlib, re
 
-paths = sorted(pathlib.Path(os.environ['RULES_DIR']).glob('*.php'))
+paths = (sorted(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')) if os.environ['RULES_DIR'] else [])
 for path in paths:
     source = path.read_text(encoding='utf-8', errors='replace')
     for match in re.finditer(r'^((?:(?:abstract|final|readonly)\s+)*)class\s+(\w+)([^{]*)\{', source, re.M):
@@ -700,7 +705,7 @@ if [[ -n "${readonlyClasses}" ]]; then
 fi
 
 # methods of the PHPStan rules that return a single rule error
-if grep -nP 'function\s+\w+\s*\([^)]*\)\s*:\s*\??\\?(?:[\w\\]*\\)?(?:Identifier)?RuleError\b' "${RULES_DIR}"/*.php; then
+if [[ -n "${RULES_DIR}" ]] && grep -nP 'function\s+\w+\s*\([^)]*\)\s*:\s*\??\\?(?:[\w\\]*\\)?(?:Identifier)?RuleError\b' "${RULES_DIR}"/*.php; then
   message="Return the rule errors of RuleErrorBuilder::build() in the array of processNode(), PhpStorm does not resolve its generic type"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
@@ -710,10 +715,11 @@ if grep -nP 'function\s+\w+\s*\([^)]*\)\s*:\s*\??\\?(?:[\w\\]*\\)?(?:Identifier)
   failed=1
 fi
 
-# node classes of php-parser 4 that php-parser 5 deprecates; the PHPStan rules run with both (PHPStan 1 and 2)
-if grep -nP '^(?!\s*(\*|//)).*\b(Scalar\\(LNumber|DNumber|Encapsed|EncapsedStringPart)|Expr\\(ArrayItem|ClosureUse)|Stmt\\(DeclareDeclare|PropertyProperty|StaticVar|UseUse))\b' \
+# node classes of php-parser 4 that php-parser 5 deprecates or removes (Stmt\Throw_); the PHPStan rules run with both
+# (PHPStan 1 and 2)
+if [[ -n "${RULES_DIR}" ]] && grep -nP '^(?!\s*(\*|//)).*\b(Scalar\\(LNumber|DNumber|Encapsed|EncapsedStringPart)|Expr\\(ArrayItem|ClosureUse)|Stmt\\(DeclareDeclare|PropertyProperty|StaticVar|UseUse|Throw_))\b' \
   "${RULES_DIR}"/*.php; then
-  message="Do not use node classes that php-parser 5 deprecates, compare the node type (getType()) of both versions instead"
+  message="Do not use node classes that php-parser 5 deprecates or removes, compare the node type (getType()) of both versions instead"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
@@ -724,7 +730,7 @@ fi
 
 # docblock tags in running text
 if grep -rnP --include='*.php' --include='*.phtml' '^\s*\*\s+[^@\s].*(?<![{\w])@(throws|param|return|var)\b' \
-  src "${RULES_DIR}"; then
+  src; then
   message="Write docblock tags only as tags: 'throws tag' instead of '@throws tag' in running text"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
@@ -747,7 +753,7 @@ fi
 
 # the module that presents Infrangible in the admin
 name=$(python3 -c 'import json; print(json.load(open("composer.json")).get("name", ""))')
-if [[ "${name}" != "infrangible/m2-foundation" ]] && ! python3 -c '
+if [[ -z "${RULES_DIR}" ]] && [[ "${name}" != "infrangible/m2-foundation" ]] && ! python3 -c '
 import json, sys
 sys.exit(0 if "infrangible/m2-foundation" in json.load(open("composer.json")).get("require", {}) else 1)'; then
   message="Every module requires infrangible/m2-foundation in composer.json"

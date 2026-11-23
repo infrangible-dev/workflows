@@ -3,7 +3,8 @@
 # Checks (on every push and pull request):
 #   - coding standard (PHPCS with the phpcs.xml of the module), with the newest Magento version
 #   - syntax of PHP 8.2 (Rector), with the newest Magento version
-#   - static analysis (PHPStan with the phpstan.neon of the module), with every Magento version
+#   - static analysis (PHPStan with the phpstan.neon of the module and infrangible/phpstan-magento from its
+#     require-dev), with every Magento version
 #   - deprecated code, replaced or suppressed with a reason (tools/check-deprecations.sh), with the newest Magento version
 #   - unit tests (PHPUnit with the phpunit.xml of the module), with every Magento version
 #
@@ -93,6 +94,12 @@ jobs:
           composer config policy.advisories.block false
           composer config repositories.module '{"type": "path", "url": "../module", "options": {"symlink": false}}'
           composer require --no-update "$(jq -r .name ../module/composer.json):*@dev"
+          # the PHPStan configuration and rules of the module (infrangible/phpstan-magento in require-dev of the module,
+          # which Composer does not install for a required package)
+          phpstanPackageVersion=$(jq -r '."require-dev"["infrangible/phpstan-magento"] // empty' ../module/composer.json)
+          if [[ -n "${phpstanPackageVersion}" ]]; then
+            composer require --dev --no-update "infrangible/phpstan-magento:${phpstanPackageVersion}"
+          fi
           composer install --no-interaction --no-progress
           echo "Magento: $(composer show magento/product-community-edition --format=json | jq -r '.versions[0]')"
 

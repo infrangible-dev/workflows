@@ -4,8 +4,9 @@
  * them by name.
  *
  * Shared configuration: the files that tools/sync-module-config.sh copies from templates/magento-module into every
- * module. They are the same in every module, so PhpStorm finds them again in the vendor folder of the development
- * environment, in the Infrangible modules the module requires.
+ * module (and the PHPStan files of modules that were synchronized before they moved to infrangible/phpstan-magento).
+ * They are the same in every module, so PhpStorm finds them again in the vendor folder of the development environment,
+ * in the Infrangible modules the module requires.
 -->
 <scopes>
     <scope name="Shared configuration" pattern="file:phpstan*.php||file:phpunit.bootstrap.php||file:phpstan-rules//*" />

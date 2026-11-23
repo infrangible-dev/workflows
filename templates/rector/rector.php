@@ -5,8 +5,8 @@
  * property promotion, readonly properties, null coalescing assignment, arrow functions, ...).
  *
  * Environment variables:
- *   MODULE_DIR    directory of the module, its src folder is checked
- *   MAGENTO_ROOT  Magento installation with the dependencies of the module
+ *   MODULE_DIR    directory of the module (or of infrangible/phpstan-magento), its src folder is checked
+ *   MAGENTO_ROOT  Magento installation with the dependencies of the module (the package itself for the package)
  */
 
 declare(strict_types=1);
@@ -35,8 +35,7 @@ if (is_dir($magentoRoot . '/generated/code')) {
 }
 
 return RectorConfig::configure()
-    // also the PHPStan rules of the workflows, which PhpStorm inspects as copies in the modules
-    ->withPaths([$moduleDir . '/src', dirname(__DIR__) . '/magento-module/phpstan-rules'])
+    ->withPaths([$moduleDir . '/src'])
     ->withAutoloadPaths($scan)
     ->withPhpSets(php82: true)
     ->withSkip([

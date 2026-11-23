@@ -26,7 +26,7 @@
     <fqn value="\Zend_Db_Select_Exception" />
     <!--
      * Thrown by the API of PHPStan (for example RuleErrorBuilder::build()) for internal errors of PHPStan, which the
-     * rules in phpstan-rules cannot handle; PHPStan declares it unchecked itself.
+     * rules of infrangible/phpstan-magento cannot handle; PHPStan declares it unchecked itself.
     -->
     <fqn value="\PHPStan\ShouldNotHappenException" />
     <!--
