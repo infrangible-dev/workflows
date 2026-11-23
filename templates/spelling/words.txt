@@ -26,6 +26,7 @@ cpot
 cpott
 creditmemo
 custgroup
+dragonmantank
 dtime
 eaov
 educoder
@@ -54,6 +55,7 @@ innodb
 knollmann
 lastname
 leftnav
+luma
 magento
 mailcatcher
 massaction
