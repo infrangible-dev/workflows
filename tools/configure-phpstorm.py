@@ -14,6 +14,7 @@
     - unchecked-exceptions.xml: exceptions that need no @throws tag (.idea/php.xml, merged with existing ones)
     - js-libraries.xml: JavaScript libraries (.idea/libraries/<name>.xml), assigned to the project
       (.idea/jsLibraryMappings.xml, merged with libraries assigned there already)
+    - scopes.xml: scopes that inspections.xml refers to (.idea/scopes/<name>.xml)
     - dictionary.xml: words of Magento for the spell checker, for example from class names like
       ReinitableConfigInterface (.idea/dictionaries/magento.xml; the dictionary "project" of the module stays)
     - stubs: declarations for PhpStorm only, added as include path (.idea/php.xml), relative to the module, so the
@@ -90,6 +91,17 @@ def inspection_tools() -> list[tuple[str, str]]:
 
 def dictionary() -> str:
     return (TEMPLATE_PATH / "dictionary.xml").read_text(encoding="utf-8")
+
+
+def scopes() -> dict[str, str]:
+    """Returns the content of .idea/scopes/<name>.xml of every scope in scopes.xml by file name."""
+    source = (TEMPLATE_PATH / "scopes.xml").read_text(encoding="utf-8")
+    source = re.sub(r"<!--.*?-->", "", source, flags=re.S)
+    return {
+        re.sub(r"\W", "_", match.group(1)) + ".xml":
+            f'<component name="DependencyValidationManager">\n  {match.group(0)}\n</component>\n'
+        for match in re.finditer(r'<scope name="([^"]+)" pattern="[^"]*" />', source)
+    }
 
 
 def profile_settings() -> str:
@@ -335,6 +347,7 @@ def main() -> int:
     tools = inspection_tools()
     settings = profile_settings()
     words = dictionary()
+    scope_files = scopes()
     resources = project_resources()
     entries = entry_points()
     index, exclude = module_folders()
@@ -359,6 +372,8 @@ def main() -> int:
             idea / "php.xml": lambda s: apply_unchecked_exceptions(
                 apply_include_path(s or EMPTY_PHP, STUBS_INCLUDE_PATH), unchecked),
         }
+        for file_name, scope in scope_files.items():
+            files[idea / "scopes" / file_name] = lambda s, scope=scope: scope
         for name, library_files in libraries.items():
             files[idea / "libraries" / (re.sub(r"\W", "_", name) + ".xml")] = (
                 lambda s, library=js_library(name, library_files): library

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ * Scopes that tools/configure-phpstorm.py writes into .idea/scopes/<name>.xml of every module; inspections.xml refers to
+ * them by name.
+ *
+ * Shared configuration: the files that tools/sync-module-config.sh copies from templates/magento-module into every
+ * module. They are the same in every module, so PhpStorm finds them again in the vendor folder of the development
+ * environment, in the Infrangible modules the module requires.
+-->
+<scopes>
+    <scope name="Shared configuration" pattern="file:phpstan*.php||file:phpunit.bootstrap.php||file:phpstan-rules//*" />
+</scopes>

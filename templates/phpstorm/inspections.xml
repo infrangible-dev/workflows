@@ -60,4 +60,12 @@
      * checks them.
     -->
     <inspection_tool class="PhpClassCanBeReadonlyInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <!--
+     * Duplicated code: the shared configuration (scope "Shared configuration" of scopes.xml) is the same in every
+     * module, also in the Infrangible modules in the vendor folder of the development environment. Duplicates in the
+     * code of the module are still reported, here and by tools/check-duplicated-code.sh in CI.
+    -->
+    <inspection_tool class="DuplicatedCode" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <scope name="Shared configuration" level="WEAK WARNING" enabled="false" />
+    </inspection_tool>
 </inspections>

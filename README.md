@@ -277,6 +277,7 @@ tools/add-return-tags.py ../m2-core/src
 | `stubs/`                 | include path in `.idea/php.xml`                    | classes for PhpStorm only (see below)       |
 | `unchecked-exceptions.xml` | `.idea/php.xml` (`PhpAnalysisConfiguration`)     | exceptions that need no `@throws` tag       |
 | `js-libraries.xml`       | `.idea/libraries/`, `.idea/jsLibraryMappings.xml`  | Magento's RequireJS, jQuery, ... (`lib/web`), scripts of Magento's modules that modules extend (price box, swatch renderer, ...), the Google Maps API (`stubs/google-maps.d.ts`) |
+| `scopes.xml`             | `.idea/scopes/`                                    | scopes the inspections refer to (shared configuration) |
 | `dictionary.xml`         | `.idea/dictionaries/magento.xml`                   | words of Magento for the spell checker      |
 
 The folders of the files of `js-libraries.xml` (for example `lib/web/requirejs` with `define()`) are indexed as well:
