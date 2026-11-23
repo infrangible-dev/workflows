@@ -76,7 +76,7 @@ On every push and pull request, for each combination of the matrix:
      `tools/check-spelling.sh <module> [<cspell>]`; translations (`i18n`), generated and minified files are skipped;
      fix the word, or add a correctly spelled term to `templates/spelling/words.txt`, which
      `tools/configure-phpstorm.py` also writes into the PhpStorm dictionary; locally, install cspell with
-     `cosyses Node.js 24.13` and `cosyses CSpell 10.4` (Cosyses release after 1.156.0)
+     `cosyses Node.js 24.13` and `cosyses CSpell 10.4` (Cosyses 1.157.0 or newer)
    - every class, function and constant used by the module comes from a dependency in its `composer.json`, PHP
      extensions (`ext-<name>`) included, checked with
      [ComposerRequireChecker](https://github.com/maglnet/ComposerRequireChecker) through
