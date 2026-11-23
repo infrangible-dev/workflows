@@ -40,7 +40,7 @@ done < <(find "${templatePath}" -type f -print0 | sort -z)
 # the version of infrangible/phpstan-magento that the modules require; raising it updates the modules at their next
 # synchronization
 phpstanPackage="infrangible/phpstan-magento"
-phpstanPackageVersion="~1.0.0"
+phpstanPackageVersion="~1.1.0"
 
 # files of earlier versions of the templates, now in infrangible/phpstan-magento
 obsoleteFiles=(
