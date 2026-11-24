@@ -13,6 +13,9 @@
 # Null checks before a method call are written with the nullsafe operator (PHP 8: "$x?->get()" instead of
 # "$x !== null ? $x->get() : null"), PhpStorm reports the ternary as replaceable.
 #
+# HTML elements of templates have no attribute "price" (PhpStorm: "Attribute price is not allowed here"), Magento's
+# templates had it for scripts that no longer read it; the value is written as "data-price".
+#
 # JavaScript regular expressions have no escapes that change nothing ("\]" outside a character class), PhpStorm
 # reports "Redundant character escape".
 #
@@ -90,6 +93,8 @@ check '@method\s[^(]*\([^)]*<[^>)]*,' \
   "Write parameters of '@method' tags without generic types with a comma ('array \$x'), PhpStorm expects a variable after the comma"
 check '@method\s+[^ (]*<[^ (]*,\s*[^ (]*<' \
   "Write nested generic return types of '@method' tags as 'array', PhpStorm misreads the method name"
+check '<[^>]*\sprice="|^\s+price="' \
+  "Write the price of HTML elements as 'data-price', PhpStorm reports the attribute 'price' as not allowed"
 # shellcheck disable=SC2016 # the pattern contains $, not a variable
 check '\$(this|block)->escape(Html|HtmlAttr|Js|Css|Url|XssInUrl|Quote|JsQuote)\(' \
   "Escape with Magento's escaper (\$this->_escaper in blocks, \$escaper in templates), the escape methods of blocks are deprecated"
