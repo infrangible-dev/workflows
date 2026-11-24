@@ -13,6 +13,9 @@
 # Null checks before a method call are written with the nullsafe operator (PHP 8: "$x?->get()" instead of
 # "$x !== null ? $x->get() : null"), PhpStorm reports the ternary as replaceable.
 #
+# JavaScript regular expressions have no escapes that change nothing ("\]" outside a character class), PhpStorm
+# reports "Redundant character escape".
+#
 # JavaScript variables are declared with "const" or "let" instead of "var" (ES6, supported by all browsers of Magento
 # 2.4), PhpStorm reports "var". Only the JavaScript files of the module itself are checked (with the copyright header
 # of Andreas Knollmann), not bundled libraries like select2.js. The variable "config" of requirejs-config.js may be a
@@ -173,6 +176,56 @@ PYTHON
 if [[ -n "${jsVar}" ]]; then
   echo "${jsVar}"
   message="Declare JavaScript variables with 'const' (or 'let' if they are assigned again) instead of 'var'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# JavaScript regular expressions with escapes that change nothing (PhpStorm: "Redundant character escape"): outside a
+# character class "\]", "\}" and punctuation without meaning, inside one also ".", "*", "+", "?", "(", ")", "{", "}",
+# "|" and "$"
+jsEscape=$(python3 - <<'PYTHON'
+import pathlib, re
+
+start = re.compile(r'(?:^|[(,=:\[!&|?{};]|\breturn|\btypeof)\s*/(?![/*])')
+plain = set(']}"\':=!<>,#@%&~`')
+plainInClass = plain | set('.*+?(){}|$')
+for path in sorted(pathlib.Path('src').rglob('*.js')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    if 'Andreas Knollmann' not in source[:1000]:
+        continue
+    for number, line in enumerate(source.splitlines(), 1):
+        if line.lstrip().startswith(('//', '*', '/*')):
+            continue
+        for match in start.finditer(line):
+            index = match.end()
+            inClass = False
+            redundant = []
+            while index < len(line):
+                char = line[index]
+                if char == '\\' and index + 1 < len(line):
+                    escaped = line[index + 1]
+                    if escaped in (plainInClass if inClass else plain) and not (inClass and escaped == ']'):
+                        redundant.append('\\' + escaped)
+                    index += 2
+                    continue
+                if char == '[' and not inClass:
+                    inClass = True
+                elif char == ']' and inClass:
+                    inClass = False
+                elif char == '/' and not inClass:
+                    break
+                index += 1
+            if redundant and index < len(line):
+                print(f'{path}:{number}: {" ".join(redundant)} in {line.strip()}')
+PYTHON
+)
+if [[ -n "${jsEscape}" ]]; then
+  echo "${jsEscape}"
+  message="Remove escapes that change nothing from JavaScript regular expressions, for example '\\]' outside a character class"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
