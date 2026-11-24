@@ -217,6 +217,48 @@ if [[ -n "${missingReturn}" ]]; then
   failed=1
 fi
 
+# imports that are used only in the text of comments (PhpStorm: "Import ... is never used"); PhpStorm counts code and
+# docblock tags ("@param Export $x", "@see Export::getProductsData()"), not class names in the description
+unusedImport=$(python3 - <<'PYTHON'
+import os, pathlib, re
+
+for path in sorted(set(list(pathlib.Path('src').rglob('*.php')) + [path.relative_to(pathlib.Path.cwd()) for path in
+                       (sorted(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')) if os.environ['RULES_DIR'] else []) + (sorted(pathlib.Path(os.environ['SHARED_DIR']).glob('*.php')) if os.environ['SHARED_DIR'] else [])])):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    lines = source.splitlines()
+    imports = []
+    for number, line in enumerate(lines, 1):
+        match = re.match(r'use\s+(?!function\s|const\s)\\?([\w\\]+)(?:\s+as\s+(\w+))?\s*;', line)
+        if match:
+            imports.append((number, match.group(2) or match.group(1).split('\\')[-1], line))
+    if not imports:
+        continue
+    used = set()
+    for line in lines:
+        stripped = line.strip()
+        if re.match(r'use\s', stripped) and not line.startswith(' '):
+            continue
+        if re.match(r'(\*|/\*\*?)', stripped):
+            text = ' '.join(re.findall(r'(@[\w-]+.*|\{@[^}]*\})', stripped))
+        else:
+            text = stripped
+        used.update(re.findall(r'(?<![\w\\$>])([A-Za-z_]\w*)', text))
+    for number, name, line in imports:
+        if name not in used:
+            print(f'{path}:{number}: {line.strip()}')
+PYTHON
+)
+if [[ -n "${unusedImport}" ]]; then
+  echo "${unusedImport}"
+  message="Remove unused imports, or reference the class in a docblock tag ('@see Export::getProductsData()') instead of the description"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # imported classes that are written with their fully qualified name
 qualifiedImport=$(python3 - <<'PYTHON'
 import os, pathlib, re
