@@ -19,6 +19,9 @@
 # JavaScript widget options that default to an empty object declare the properties that are read from them,
 # PhpStorm reports them as unresolved otherwise.
 #
+# JavaScript widgets are returned as the value of "$.widget()", which returns the constructor, not read from the
+# namespace that "$.widget()" creates at runtime ("$.infrangible.x"); PhpStorm reports the namespace as unresolved.
+#
 # JavaScript regular expressions have no escapes that change nothing ("\]" outside a character class), PhpStorm
 # reports "Redundant character escape".
 #
@@ -211,6 +214,35 @@ PYTHON
 if [[ -n "${jsOption}" ]]; then
   echo "${jsOption}"
   message="Declare the properties of JavaScript widget options in their default instead of an empty object '{}'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# JavaScript widgets read from the namespace "infrangible" that only "$.widget()" creates at runtime (PhpStorm:
+# "Unresolved variable infrangible")
+jsNamespace=$(python3 - <<'PYTHON'
+import pathlib, re
+
+pattern = re.compile(r'\$\.infrangible\b')
+for path in sorted(pathlib.Path('src').rglob('*.js')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    if 'Andreas Knollmann' not in source[:1000]:
+        continue
+    for number, line in enumerate(source.splitlines(), 1):
+        code = line.split('//', 1)[0]
+        if code.lstrip().startswith(('*', '/*')):
+            continue
+        if pattern.search(code):
+            print(f'{path}:{number}: {line.strip()}')
+PYTHON
+)
+if [[ -n "${jsNamespace}" ]]; then
+  echo "${jsNamespace}"
+  message="Return the widget as the value of \$.widget() instead of reading \$.infrangible, PhpStorm reports the namespace as unresolved"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
