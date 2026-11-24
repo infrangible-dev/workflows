@@ -34,6 +34,10 @@
 # in templates); the escape methods of the blocks are deprecated since Magento 2.4. tools/check-deprecations.sh finds
 # them in classes too, but in templates only if "$block" has a declared type.
 #
+# Parameters of "@method" tags have no generic types with a comma ("array<string, mixed> $x"): PhpStorm splits the
+# parameter list at the comma and reports "Expected: variable". They are written as "array $x"; the return type of the
+# getter keeps the precise type.
+#
 # HTML elements "<html>" have a "lang" attribute, also in strings of PHP code like tests; PhpStorm treats such strings
 # as HTML and reports "Missing required 'lang' attribute".
 #
@@ -77,6 +81,8 @@ check 'mixed\[\]' "Use '@param array \$x' with '@phpstan-param array<string, mix
 check 'array<mixed>' "Use 'array<string, mixed>' or 'array<int, mixed>' (or a more precise type) instead of 'array<mixed>'"
 check 'iterable<mixed>' "Use 'iterable<int|string, mixed>' (or a more precise type) instead of 'iterable<mixed>'"
 check 'array<mixed\s*,' "Use 'array<int|string, mixed>' (or a more precise key type) instead of 'array<mixed, ...>'"
+check '@method\s[^(]*\([^)]*<[^>)]*,' \
+  "Write parameters of '@method' tags without generic types with a comma ('array \$x'), PhpStorm expects a variable after the comma"
 # shellcheck disable=SC2016 # the pattern contains $, not a variable
 check '\$(this|block)->escape(Html|HtmlAttr|Js|Css|Url|XssInUrl|Quote|JsQuote)\(' \
   "Escape with Magento's escaper (\$this->_escaper in blocks, \$escaper in templates), the escape methods of blocks are deprecated"
