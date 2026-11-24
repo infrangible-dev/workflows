@@ -13,8 +13,9 @@
  *
  * Deprecated classes count where the module names them (types, new, extends, implements), not where it uses the members
  * of an object of such a class that are not deprecated themselves, as in PhpStorm. PhpStorm also reports the import of
- * a deprecated class ("use"), which PHPStan does not: with the Magento directory, the imports are checked as well, by
- * the doc comment of the file of the class that Composer's autoloader finds (without loading the class).
+ * a deprecated class ("use") and its name with "::class" (for example in createStub() of tests), which PHPStan does
+ * not: with the Magento directory, these are checked as well, by the doc comment of the file of the class that
+ * Composer's autoloader finds (without loading the class).
  *
  * Fails for deprecated code that no suppression covers and for suppressions without reason. Suppressions that cover no
  * deprecated code are reported as warnings, PhpStorm may know deprecations that PHPStan does not find.
@@ -192,6 +193,71 @@ function findImports(string $code): array
 }
 
 /**
+ * Returns the classes that a file names with "::class", resolved with its namespace and imports, with their line;
+ * PhpStorm reports them, PHPStan does not.
+ *
+ * @return array<int, array{0: string, 1: int}>
+ */
+function findClassNameReferences(string $code): array
+{
+    $tokens = array_values(
+        array_filter(
+            token_get_all($code),
+            fn($token) => ! is_array($token) || ! in_array($token[ 0 ], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)
+        )
+    );
+    $namespace = '';
+    $aliases = [];
+
+    foreach (findImports($code) as [$className]) {
+        $aliases[ strtolower(substr((string)strrchr('\\' . $className, '\\'), 1)) ] = $className;
+    }
+
+    foreach ($tokens as $index => $token) {
+        if (is_array($token) && $token[ 0 ] === T_NAMESPACE) {
+            $next = $tokens[ $index + 1 ] ?? null;
+            $namespace = is_array($next) ? $next[ 1 ] : '';
+        }
+    }
+
+    $references = [];
+    $count = count($tokens);
+
+    for ($index = 0; $index + 2 < $count; $index++) {
+        $token = $tokens[ $index ];
+        $colon = $tokens[ $index + 1 ];
+        $class = $tokens[ $index + 2 ];
+
+        if (! is_array($token) ||
+            ! in_array($token[ 0 ], [T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_STRING], true) ||
+            ! is_array($colon) || $colon[ 0 ] !== T_DOUBLE_COLON || ! is_array($class) || $class[ 0 ] !== T_CLASS) {
+
+            continue;
+        }
+
+        $name = $token[ 1 ];
+
+        if (in_array(strtolower($name), ['self', 'static', 'parent'], true)) {
+            continue;
+        }
+
+        if ($name[ 0 ] === '\\') {
+            $className = substr($name, 1);
+        } else {
+            $parts = explode('\\', $name, 2);
+            $alias = $aliases[ strtolower($parts[ 0 ]) ] ?? null;
+            $className = $alias !== null ?
+                $alias . (isset($parts[ 1 ]) ? '\\' . $parts[ 1 ] : '') :
+                ($namespace !== '' ? $namespace . '\\' : '') . $name;
+        }
+
+        $references[] = [$className, $token[ 2 ]];
+    }
+
+    return $references;
+}
+
+/**
  * Tells whether the doc comment of a class, interface or trait declares it deprecated, read from its file.
  */
 function isDeprecatedClass(string $className, ?object $classLoader): bool
@@ -276,9 +342,17 @@ foreach ($iterator as $fileInfo) {
 
 if ($classLoader !== null) {
     foreach ($moduleFiles as $file) {
-        foreach (findImports((string)file_get_contents($file)) as [$className, $line]) {
+        $code = (string)file_get_contents($file);
+
+        foreach (findImports($code) as [$className, $line]) {
             if (isDeprecatedClass($className, $classLoader)) {
                 $findings[ $file ][] = [$line, sprintf('Import of deprecated class %s.', $className)];
+            }
+        }
+
+        foreach (findClassNameReferences($code) as [$className, $line]) {
+            if (isDeprecatedClass($className, $classLoader)) {
+                $findings[ $file ][] = [$line, sprintf('Name of deprecated class %s with ::class.', $className)];
             }
         }
     }
