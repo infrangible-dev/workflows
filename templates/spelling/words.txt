@@ -60,6 +60,7 @@ magento
 mailcatcher
 massaction
 mediabrowser
+minicart
 msrp
 namegridcolumn
 noroute
@@ -76,6 +77,7 @@ sgridcolumn
 sitemapindex
 skus
 softwareentwicklung
+subline
 superglobal
 tablerate
 timestampdiff
