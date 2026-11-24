@@ -16,6 +16,9 @@
 # HTML elements of templates have no attribute "price" (PhpStorm: "Attribute price is not allowed here"), Magento's
 # templates had it for scripts that no longer read it; the value is written as "data-price".
 #
+# JavaScript widget options that default to an empty object declare the properties that are read from them,
+# PhpStorm reports them as unresolved otherwise.
+#
 # JavaScript regular expressions have no escapes that change nothing ("\]" outside a character class), PhpStorm
 # reports "Redundant character escape".
 #
@@ -181,6 +184,33 @@ PYTHON
 if [[ -n "${jsVar}" ]]; then
   echo "${jsVar}"
   message="Declare JavaScript variables with 'const' (or 'let' if they are assigned again) instead of 'var'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# JavaScript widget options whose default is an empty object "{}" and whose properties are read with a dot
+# (PhpStorm: "Unresolved variable"); declare the properties in the default ("config: {allowHideProductIds: {}}")
+jsOption=$(python3 - <<'PYTHON'
+import pathlib, re
+
+for path in sorted(pathlib.Path('src').rglob('*.js')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    if 'Andreas Knollmann' not in source[:1000]:
+        continue
+    empty = set(re.findall(r'^\s*(\w+):\s*\{\s*\},?\s*$', source, re.M))
+    for number, line in enumerate(source.splitlines(), 1):
+        for name, prop in re.findall(r'\boptions\.(\w+)\.(\w+)', line.split('//', 1)[0]):
+            if name in empty:
+                print(f'{path}:{number}: options.{name}.{prop} in {line.strip()}')
+PYTHON
+)
+if [[ -n "${jsOption}" ]]; then
+  echo "${jsOption}"
+  message="Declare the properties of JavaScript widget options in their default instead of an empty object '{}'"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
