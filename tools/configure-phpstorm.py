@@ -30,13 +30,15 @@ Usage: configure-phpstorm.py [--check] [--ide-profile <file>] <module directory>
 
     --check                 only report modules whose settings differ, exit with 1 if any differs (also without
                             --check: Magento schemas of the module that PhpStorm cannot load and that have no
-                            corrected copy in templates/phpstorm/schemas)
+                            corrected copy in templates/phpstorm/schemas, and imported factories and proxies that
+                            are not generated yet in generated/code, which PhpStorm reports as undefined classes)
     --ide-profile <file>    also write the inspection settings into this IDE profile, for example
                             /mnt/c/Users/<user>/AppData/Roaming/JetBrains/PhpStorm<version>/inspection/Magento.xml;
                             PhpStorm saves IDE profiles itself, so close it before using this option; a missing
                             file is created with the name of the file as profile name
 """
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -333,6 +335,35 @@ def uncorrected_schemas(directory: Path, resources: str) -> list[str]:
     return found
 
 
+def missing_generated_classes(directory: Path) -> list[str]:
+    """Returns the factories and proxies that the module imports and that are neither a class of the module or of its
+    vendor folder nor generated in generated/code: Magento generates them on first use or with setup:di:compile, and
+    PhpStorm reports their imports as "Undefined class" until they are generated."""
+    psr4_file = directory / "vendor" / "composer" / "autoload_psr4.php"
+    if not psr4_file.is_file() or not (directory / "src").is_dir():
+        return []
+    prefixes = [(prefix.replace("\\\\", "\\"), directory / "vendor" / path.lstrip("/"))
+                for prefix, path in re.findall(r"'([^']+)' => array\(\$vendorDir \. '([^']+)'",
+                                               psr4_file.read_text(encoding="utf-8"))]
+    composer_file = directory / "composer.json"
+    if composer_file.is_file():
+        autoload = json.loads(composer_file.read_text(encoding="utf-8")).get("autoload", {}).get("psr-4", {})
+        prefixes += [(prefix, directory / path) for prefix, path in autoload.items() if isinstance(path, str)]
+    prefixes.sort(key=lambda entry: len(entry[0]), reverse=True)
+    missing = []
+    for php in sorted((directory / "src").rglob("*.php")):
+        source = php.read_text(encoding="utf-8", errors="replace")
+        for class_name in re.findall(r"^use\s+\\?([\w\\]+(?:Factory|Proxy))(?:\s+as\s+\w+)?\s*;", source, re.M):
+            relative = class_name.replace("\\", "/") + ".php"
+            if (directory / "generated" / "code" / relative).is_file():
+                continue
+            if any(class_name.startswith(prefix) and (path / (class_name[len(prefix):].replace("\\", "/") + ".php"))
+                   .is_file() for prefix, path in prefixes):
+                continue
+            missing.append(f"{php.relative_to(directory)}: {class_name}")
+    return sorted(set(missing))
+
+
 def apply_component(misc: str, name: str, component: str) -> str:
     pattern = re.compile(r'[ \t]*<component name="' + name + r'">.*?</component>\n', re.S)
     if pattern.search(misc):
@@ -392,6 +423,9 @@ def main() -> int:
             files[iml] = lambda s: apply_folders(s, index, exclude, directory)
         for schema in uncorrected_schemas(directory, resources):
             print(f"Schema without corrected copy in templates/phpstorm/schemas: {schema}")
+            schema_problems = True
+        for generated in missing_generated_classes(directory):
+            print(f"Not generated, run bin/magento setup:di:compile in the environment: {generated}")
             schema_problems = True
         for path, update in files.items():
             current, line_ending = read_file(path)
