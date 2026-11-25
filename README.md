@@ -266,7 +266,10 @@ PhpStorm loads new JavaScript libraries only when it opens a project, so reopen 
 Magento's LESS library (`vendor/magento/magento2-base/lib/web/css/source`) is indexed so that PhpStorm resolves its
 variables and mixins in `_module.less`. PhpStorm's Composer synchronization excludes the whole package, and the script
 replaces this exclusion by the exclusion of the other folders of the package. This needs the Magento installation of
-the development environment, so run the script again after `ads rise` and after PhpStorm synchronized Composer packages.
+the development environment, so run the script again after `ads rise`. The script also switches off PhpStorm's
+Composer synchronization (`.idea/workspace.xml`): when the installed packages changed, it ran when the project was
+opened and excluded the packages again, so `define()` and the LESS variables were unresolved right after opening.
+PhpStorm writes `workspace.xml` when it closes a project, so run the script while the project is closed.
 
 The modules use the IDE profile "Magento", a copy of the PhpStorm default inspections. To write the inspection
 settings into it as well, close PhpStorm (it saves IDE profiles itself) and run:
