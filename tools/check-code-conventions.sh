@@ -521,6 +521,69 @@ if [[ -n "${jsArguments}" ]]; then
   failed=1
 fi
 
+# the same jQuery selector twice in one function (PhpStorm: "Duplicated jQuery selector"): select the element once and
+# keep it in a variable. Nested functions are checked on their own; elements created with "$('<div>')" are not
+# selectors.
+jsSelectors=$(python3 - <<'PYTHON'
+import pathlib, re
+
+selector = re.compile(r"\$\(\s*(['\"])((?:(?!\1).)+)\1\s*\)")
+
+
+def bodies(source):
+    """Yields the start and end of each function body, with the ranges of the functions nested in it."""
+    ranges = []
+    for match in re.finditer(r'\bfunction\b[^{]*\{|=>\s*\{', source):
+        depth, index, quote = 0, match.end() - 1, None
+        while index < len(source):
+            char = source[index]
+            if quote:
+                if char == '\\':
+                    index += 1
+                elif char == quote:
+                    quote = None
+            elif char in '\'"`':
+                quote = char
+            elif char == '{':
+                depth += 1
+            elif char == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            index += 1
+        ranges.append((match.end(), index))
+    for start, end in ranges:
+        yield start, end, [(s, e) for s, e in ranges if start < s and e < end]
+
+
+for path in sorted(pathlib.Path('src').rglob('*.js')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    if 'Andreas Knollmann' not in source[:1000]:
+        continue
+    for start, end, nested in bodies(source):
+        seen = {}
+        for match in selector.finditer(source, start, end):
+            text = match.group(2)
+            if any(s <= match.start() < e for s, e in nested) or text.lstrip().startswith('<'):
+                continue
+            number = source.count('\n', 0, match.start()) + 1
+            if text in seen:
+                print(f"{path}:{number}: $('{text}') also in line {seen[text]}")
+            else:
+                seen[text] = number
+PYTHON
+)
+if [[ -n "${jsSelectors}" ]]; then
+  echo "${jsSelectors}"
+  message="Select elements once per function and keep them in a variable, PhpStorm reports 'Duplicated jQuery selector'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # JavaScript regular expressions with escapes that change nothing (PhpStorm: "Redundant character escape"): outside a
 # character class "\]", "\}" and punctuation without meaning, inside one also ".", "*", "+", "?", "(", ")", "{", "}",
 # "|" and "$"
