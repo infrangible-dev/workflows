@@ -77,6 +77,8 @@ set -u
 
 moduleDir="${1:?Usage: $0 <module directory>}"
 
+# the templates of the workflows, before changing into the module
+TEMPLATES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../templates" && pwd)"
 cd "${moduleDir}" || exit 1
 
 # the PHPStan rules (src) and the shared PHP files of the modules (bootstrap and configuration files in the root
@@ -89,7 +91,7 @@ else
   RULES_DIR=""
   SHARED_DIR=""
 fi
-export RULES_DIR SHARED_DIR
+export RULES_DIR SHARED_DIR TEMPLATES_DIR
 
 failed=0
 
@@ -241,30 +243,55 @@ own = [path for path in sorted(pathlib.Path('src').rglob('*.js'))
        if 'Andreas Knollmann' in path.read_text(encoding='utf-8', errors='replace')[:1000]]
 reads = []
 for path in own:
-    for number, line in enumerate(path.read_text(encoding='utf-8', errors='replace').splitlines(), 1):
-        for name, prop in re.findall(r'\boptions\.(\w+)\.(\w+)', line.split('//', 1)[0]):
-            reads.append((path, number, name, prop, line.strip()))
+    source = path.read_text(encoding='utf-8', errors='replace')
+    # variables with an option ("const data = this.options.childProductData;") and with an element of an option
+    # ("const item = data[id];"), whose properties come from the JSON of the block
+    aliases = set(re.findall(r'\b(?:const|let|var)\s+(\w+)\s*=\s*this\.options\.\w+\s*;', source))
+    sources = '|'.join([re.escape(alias) for alias in aliases] + [r'this\.options\.\w+'])
+    elements = set(re.findall(
+        r'\b(?:const|let|var)\s+(\w+)\s*=[^;]*?\b(?:' + sources + r')\s*\[', source))
+    for number, line in enumerate(source.splitlines(), 1):
+        code = line.split('//', 1)[0]
+        if code.lstrip().startswith('*'):
+            continue
+        for name, prop in re.findall(r'\boptions\.(\w+)\.(\w+)', code):
+            reads.append((path, number, 'options.' + name, prop, line.strip(), False))
+        for element in elements:
+            for prop in re.findall(r'(?<![\w.])' + re.escape(element) + r'\.(\w+)', code):
+                reads.append((path, number, element, prop, line.strip(), True))
 
 if magento is not None and reads:
     declaration = re.compile(r'(?:^|[{,\s])[\'"]?(\w+)[\'"]?\s*:|\.(\w+)\s*=[^=]')
     declared = set()
     files = own + list((magento / 'vendor' / 'magento').glob('*/view/*/web/**/*.js')) + \
         list((magento / 'vendor' / 'magento' / 'magento2-base' / 'lib' / 'web').glob('**/*.js'))
+    # elements of options are resolved like PhpStorm does: with the module and the JavaScript libraries that
+    # configure-phpstorm.py assigns to the project (templates/phpstorm/js-libraries.xml), not with all of Magento
+    library_files = set()
+    libraries = pathlib.Path(os.environ.get('TEMPLATES_DIR', '')) / 'phpstorm' / 'js-libraries.xml'
+    if libraries.is_file():
+        for library_file in re.findall(r'<file path="(vendor/[^"]+)"', libraries.read_text(encoding='utf-8')):
+            library_files.add((magento / library_file).resolve())
+    library_declared = set()
     for path in files:
         try:
             source = path.read_text(encoding='utf-8', errors='replace')
         except OSError:
             continue
-        for match in declaration.finditer(source):
-            declared.add(match.group(1) or match.group(2))
-    for path, number, name, prop, line in reads:
-        if prop not in declared:
-            print(f'{path}:{number}: options.{name}.{prop} in {line}')
+        names = {match.group(1) or match.group(2) for match in declaration.finditer(source)}
+        # properties of JSDoc types (@typedef with @property tags)
+        names.update(re.findall(r'@property\s+\{[^}]*\}\s+\[?(\w+)', source))
+        declared.update(names)
+        if path in own or path.resolve() in library_files:
+            library_declared.update(names)
+    for path, number, name, prop, line, element in reads:
+        if prop not in (library_declared if element else declared):
+            print(f'{path}:{number}: {name}.{prop} in {line}')
 PYTHON
 )
 if [[ -n "${jsUndeclared}" ]]; then
   echo "${jsUndeclared}"
-  message="Declare the properties that are read from JavaScript widget options in the options of the widget, PhpStorm reports them as unresolved otherwise"
+  message="Declare the properties that are read from JavaScript widget options (or from their elements, for example with a JSDoc @typedef and @property tags), PhpStorm reports them as unresolved otherwise"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
