@@ -42,6 +42,9 @@
 # instead of written with their fully qualified name, also in docblocks ("Qualifier can be replaced with an import"),
 # unless the short name is taken by another import or the class itself.
 #
+# The keywords in composer.json contain only letters, digits, spaces, dots, underscores and hyphens, as Composer's
+# validation requires; Packagist rejects the package data otherwise (for example "Cart & checkout").
+#
 # Every module requires infrangible/m2-foundation in its composer.json, the module that presents Infrangible in the
 # Magento admin, also when the code of the module does not use it. m2-foundation itself is the exception.
 #
@@ -1191,6 +1194,24 @@ if [[ -z "${RULES_DIR}" ]] && [[ "${name}" != "infrangible/m2-foundation" ]] && 
 import json, sys
 sys.exit(0 if "infrangible/m2-foundation" in json.load(open("composer.json")).get("require", {}) else 1)'; then
   message="Every module requires infrangible/m2-foundation in composer.json"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# keywords that Composer does not accept (Packagist: "keywords.N: invalid value")
+invalidKeywords=$(python3 -c '
+import json, re
+for keyword in json.load(open("composer.json")).get("keywords", []):
+    if not isinstance(keyword, str) or keyword.strip() == "" or re.search(r"[^\w .-]", keyword):
+        print(f"composer.json: keyword {keyword!r}")
+')
+if [[ -n "${invalidKeywords}" ]]; then
+  echo "${invalidKeywords}"
+  message="Use only letters, digits, spaces, dots, underscores and hyphens in the keywords of composer.json, Packagist rejects other characters"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
