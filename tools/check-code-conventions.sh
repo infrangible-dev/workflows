@@ -55,6 +55,10 @@
 # HTML elements "<html>" have a "lang" attribute, also in strings of PHP code like tests; PhpStorm treats such strings
 # as HTML and reports "Missing required 'lang' attribute".
 #
+# Templates call no methods of the blocks of the module (the type of "$block") that declare exceptions in their
+# docblock: a template cannot catch them, PhpStorm reports "Unhandled exception", and PHPStan does not analyze
+# templates.
+#
 # Usage: tools/check-code-conventions.sh <module directory>
 
 set -u
@@ -214,6 +218,62 @@ PYTHON
 if [[ -n "${jsOption}" ]]; then
   echo "${jsOption}"
   message="Declare the properties of JavaScript widget options in their default instead of an empty object '{}'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# templates that call methods of blocks of the module that declare exceptions (PhpStorm: "Unhandled exception")
+templateThrows=$(python3 - <<'PYTHON'
+import json, pathlib, re
+
+autoload = json.load(open('composer.json')).get('autoload', {}).get('psr-4', {})
+
+def class_file(class_name):
+    for prefix, directory in autoload.items():
+        if class_name.startswith(prefix):
+            path = pathlib.Path(directory) / (class_name[len(prefix):].replace('\\', '/') + '.php')
+            return path if path.is_file() else None
+    return None
+
+throwing = {}
+
+def throwing_methods(path):
+    if path not in throwing:
+        source = path.read_text(encoding='utf-8', errors='replace')
+        throwing[path] = {
+            match.group(2).lower()
+            for match in re.finditer(r'/\*\*((?:(?!\*/).)*?)\*/\s*(?:(?:public|static|final)\s+)*function\s+(\w+)', source, re.S)
+            if re.search(r'@throws\s', match.group(1))
+        }
+    return throwing[path]
+
+for template in sorted(pathlib.Path('src').rglob('*.phtml')):
+    source = template.read_text(encoding='utf-8', errors='replace')
+    block_type = re.search(r'@var\s+\\?([\w\\]+)\s+\$block\b', source)
+    if not block_type:
+        continue
+    class_name = block_type.group(1)
+    if '\\' not in class_name:
+        imported = re.search(r'^use\s+([\w\\]+\\' + re.escape(class_name) + r')\s*;', source, re.M)
+        imported_as = re.search(r'^use\s+([\w\\]+)\s+as\s+' + re.escape(class_name) + r'\s*;', source, re.M)
+        class_name = imported.group(1) if imported else imported_as.group(1) if imported_as else class_name
+    path = class_file(class_name)
+    if path is None:
+        continue
+    methods = throwing_methods(path)
+    for number, line in enumerate(source.splitlines(), 1):
+        for call in re.finditer(r'\$block->(\w+)\s*\(', line):
+            if call.group(1).lower() in methods:
+                print(f'{template}:{number}: {call.group(1)}() of {path} declares exceptions')
+PYTHON
+)
+if [[ -n "${templateThrows}" ]]; then
+  echo "${templateThrows}"
+  message="Templates cannot handle exceptions: let the methods of the block return a default instead of throwing, PhpStorm reports 'Unhandled exception'"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
