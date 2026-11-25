@@ -91,6 +91,7 @@ translit
 uncacheable
 upsell
 valkey
+vbscript
 vchr
 vincenty
 weee
