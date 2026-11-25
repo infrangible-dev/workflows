@@ -62,6 +62,9 @@
 # docblock: a template cannot catch them, PhpStorm reports "Unhandled exception", and PHPStan does not analyze
 # templates.
 #
+# The JavaScript of the module has no duplicated fragments of 6 or more lines (without empty lines and lines with only
+# brackets); PhpStorm reports them as "Duplicated code fragment", PHPCPD checks only PHP.
+#
 # Usage: tools/check-code-conventions.sh <module directory>
 
 set -u
@@ -321,6 +324,50 @@ PYTHON
 if [[ -n "${templateThrows}" ]]; then
   echo "${templateThrows}"
   message="Templates cannot handle exceptions: let the methods of the block return a default instead of throwing, PhpStorm reports 'Unhandled exception'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# duplicated fragments in the JavaScript of the module (PhpStorm: "Duplicated code fragment")
+jsDuplicates=$(python3 - <<'PYTHON'
+import pathlib, re
+
+minimum = 6
+fragments = {}
+for path in sorted(pathlib.Path('src').rglob('*.js')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    if 'Andreas Knollmann' not in source[:1000]:
+        continue
+    lines = []
+    for number, line in enumerate(source.splitlines(), 1):
+        code = re.sub(r'\s+', ' ', line.split('//', 1)[0]).strip()
+        if code and not re.fullmatch(r'[\[\](){};,\s]*', code) and not code.startswith(('*', '/*')):
+            lines.append((number, code))
+    for index in range(len(lines) - minimum + 1):
+        key = tuple(code for number, code in lines[index:index + minimum])
+        fragments.setdefault(key, []).append((path, lines[index][0]))
+
+reported = set()
+for key, places in fragments.items():
+    if len(places) > 1:
+        # report each pair of places once, at the start of the first window
+        first, second = places[0], places[1]
+        if (first[0], second[0], first[1] - 1, second[1] - 1) in reported or \
+                any((first[0], second[0]) == (a, b) and 0 < first[1] - x <= 30 and 0 < second[1] - y <= 30
+                    for a, b, x, y in reported):
+            reported.add((first[0], second[0], first[1], second[1]))
+            continue
+        reported.add((first[0], second[0], first[1], second[1]))
+        print(f'{first[0]}:{first[1]} and {second[0]}:{second[1]}: duplicated fragment, starting with "{key[0]}"')
+PYTHON
+)
+if [[ -n "${jsDuplicates}" ]]; then
+  echo "${jsDuplicates}"
+  message="Move duplicated JavaScript into a function or a method of the widget, PhpStorm reports 'Duplicated code fragment'"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
