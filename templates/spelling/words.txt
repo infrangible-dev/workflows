@@ -141,3 +141,8 @@ ulrich
 weisweiler
 wolfsburg
 wuhlheide
+
+# Names and file names of bundled JavaScript libraries
+mitsaras
+pkgd
+vasileios
