@@ -85,6 +85,7 @@ superglobal
 tablerate
 timestampdiff
 tinyint
+tocart
 tocompare
 translit
 uncacheable
@@ -96,6 +97,7 @@ weee
 
 # Names of modules in identifiers, for example routes and ACL resources
 catalogattributelandingpage
+catalogproductpos
 catalogproductpricecalculation
 retailstore
 
