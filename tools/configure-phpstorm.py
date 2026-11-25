@@ -229,6 +229,32 @@ def unchecked_exceptions() -> list[str]:
     return re.findall(r'<fqn value="([^"]+)"', source)
 
 
+def php_language_level(directory: Path) -> str | None:
+    """The lowest PHP version that composer.json of the module allows (">=8.2" -> "8.2"), or None."""
+    try:
+        constraint = json.loads((directory / "composer.json").read_text()).get("require", {}).get("php", "")
+    except (OSError, ValueError):
+        return None
+    match = re.search(r"(\d+)\.(\d+)", constraint) if isinstance(constraint, str) else None
+    return f"{match.group(1)}.{match.group(2)}" if match else None
+
+
+def apply_language_level(php: str, level: str | None) -> str:
+    """Sets the PHP language level of the project to the lowest PHP version of the module; PhpStorm uses its newest
+    version for new projects and then suggests functions the module cannot use (for example array_any() of PHP 8.4)."""
+    if level is None:
+        return php
+    component = re.search(r'<component name="PhpProjectSharedConfiguration"([^>]*?)(/?)>', php)
+    name = 'name="PhpProjectSharedConfiguration"'
+    if component is None:
+        element = f'  <component {name} php_language_level="{level}" />\n'
+        return php.replace("</project>", element + "</project>", 1)
+    attributes = re.sub(r'\s*php_language_level="[^"]*"', "", component.group(1)).rstrip()
+    closing = " />" if component.group(2) else ">"
+    element = f'<component {name}{attributes} php_language_level="{level}"{closing}'
+    return php[:component.start()] + element + php[component.end():]
+
+
 def apply_unchecked_exceptions(php: str, fqns: list[str]) -> str:
     component = re.search(
         r'([ \t]*)<component name="PhpAnalysisConfiguration">\s*<unchecked_exceptions>(.*?)</unchecked_exceptions>'
@@ -429,8 +455,8 @@ def main() -> int:
             idea / "dictionaries" / "magento.xml": lambda s: words,
             idea / "misc.xml": lambda s: apply_component(
                 apply_component(s or EMPTY_MISC, "PhpEntryPointsManager", entries), "ProjectResources", resources),
-            idea / "php.xml": lambda s: apply_unchecked_exceptions(
-                apply_include_path(s or EMPTY_PHP, STUBS_INCLUDE_PATH), unchecked),
+            idea / "php.xml": lambda s, level=php_language_level(directory): apply_language_level(
+                apply_unchecked_exceptions(apply_include_path(s or EMPTY_PHP, STUBS_INCLUDE_PATH), unchecked), level),
         }
         for file_name, scope in scope_files.items():
             files[idea / "scopes" / file_name] = lambda s, scope=scope: scope
