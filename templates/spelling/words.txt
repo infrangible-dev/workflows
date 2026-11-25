@@ -55,11 +55,14 @@ innodb
 knollmann
 lastname
 leftnav
+longtext
 luma
 magento
 mailcatcher
 massaction
 mediabrowser
+mediumint
+mediumtext
 minicart
 msrp
 namegridcolumn
@@ -81,6 +84,7 @@ subline
 superglobal
 tablerate
 timestampdiff
+tinyint
 tocompare
 translit
 uncacheable
