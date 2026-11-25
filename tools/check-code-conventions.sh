@@ -405,6 +405,114 @@ if [[ -n "${jsNamespace}" ]]; then
   failed=1
 fi
 
+# calls of JavaScript functions with fewer arguments than the function declares (PhpStorm: "Invalid number of
+# arguments, expected 3"): calls of functions of Magento's JavaScript modules through the parameter of "define()"
+# ("priceUtils.formatPrice(a, b)" with "priceUtils" resolved by the requirejs-config.js files of Magento). Parameters
+# with a default value or marked as optional in the JSDoc ("[name]", "{Type=}") are not required.
+jsArguments=$(python3 - <<'PYTHON'
+import os, pathlib, re
+
+roots = [pathlib.Path(os.environ.get('MAGENTO_ROOT', '')), pathlib.Path('.')]
+magento = next((root for root in roots if str(root) and (root / 'vendor' / 'magento').is_dir()), None)
+
+own = [path for path in sorted(pathlib.Path('src').rglob('*.js'))
+       if 'Andreas Knollmann' in path.read_text(encoding='utf-8', errors='replace')[:1000]]
+
+definition = re.compile(
+    r'(/\*\*(?:(?!\*/).)*?\*/\s*)?(?:\bfunction\s+(\w+)|\b(\w+)\s*:\s*function)\s*\(([^()]*)\)',
+    re.S
+)
+
+
+def required(source):
+    result = {}
+    for match in definition.finditer(source):
+        doc, name = match.group(1) or '', match.group(2) or match.group(3)
+        count = 0
+        for param in [param.strip() for param in match.group(4).split(',') if param.strip()]:
+            if '=' in param or param.startswith('...') or \
+                    re.search(r'@param\s+\{[^}]*=\}\s*' + re.escape(param) + r'\b', doc) or \
+                    re.search(r'@param\s+(?:\{[^}]*\}\s*)?\[' + re.escape(param) + r'\b', doc):
+                break
+            count += 1
+        result[name] = min(result.get(name, count), count)
+    return result
+
+
+def module_file(dependency):
+    match = re.fullmatch(r'Magento_(\w+)/(.+)', dependency)
+    if match is None:
+        return None
+    directory = 'module-' + re.sub(r'(?<!^)(?=[A-Z])', '-', match.group(1)).lower()
+    for area in ('base', 'frontend', 'adminhtml'):
+        path = magento / 'vendor' / 'magento' / directory / 'view' / area / 'web' / (match.group(2) + '.js')
+        if path.is_file():
+            return path
+    return None
+
+
+def arguments(source, start):
+    depth, count, index, empty, quote = 0, 0, start, True, None
+    while index < len(source):
+        char = source[index]
+        if quote:
+            if char == '\\':
+                index += 1
+            elif char == quote:
+                quote = None
+        elif char in '\'"`':
+            quote, empty = char, False
+        elif char in '([{':
+            depth, empty = depth + 1, False
+        elif char in ')]}':
+            if depth == 0:
+                return 0 if empty else count + 1
+            depth -= 1
+        elif char == ',' and depth == 0:
+            count += 1
+        elif not char.isspace():
+            empty = False
+        index += 1
+    return None
+
+
+if magento is not None and own:
+    aliases = {}
+    for config in (magento / 'vendor' / 'magento').glob('module-*/view/*/requirejs-config.js'):
+        source = config.read_text(encoding='utf-8', errors='replace')
+        for alias, target in re.findall(r'[\'"]?([\w-]+)[\'"]?\s*:\s*[\'"](Magento_\w+/[\w/.-]+)[\'"]', source):
+            aliases.setdefault(alias, target)
+    for path in own:
+        source = path.read_text(encoding='utf-8', errors='replace')
+        match = re.search(r'define\s*\(\s*\[([^\]]*)\]\s*,\s*function\s*\(([^)]*)\)', source)
+        if match is None:
+            continue
+        dependencies = re.findall(r'[\'"]([^\'"]+)[\'"]', match.group(1))
+        parameters = [param.strip() for param in match.group(2).split(',') if param.strip()]
+        for dependency, parameter in zip(dependencies, parameters):
+            file = module_file(aliases.get(dependency, dependency))
+            if file is None:
+                continue
+            functions = required(file.read_text(encoding='utf-8', errors='replace'))
+            for call in re.finditer(r'\b' + re.escape(parameter) + r'\.(\w+)\s*\(', source):
+                needed = functions.get(call.group(1))
+                given = arguments(source, call.end())
+                if needed is not None and given is not None and given < needed:
+                    number = source.count('\n', 0, call.start()) + 1
+                    print(f'{path}:{number}: {parameter}.{call.group(1)}() with {given} of {needed} arguments')
+PYTHON
+)
+if [[ -n "${jsArguments}" ]]; then
+  echo "${jsArguments}"
+  message="Pass all arguments that the JavaScript function declares (for example false as last argument of priceUtils.formatPrice()), PhpStorm reports 'Invalid number of arguments'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # JavaScript regular expressions with escapes that change nothing (PhpStorm: "Redundant character escape"): outside a
 # character class "\]", "\}" and punctuation without meaning, inside one also ".", "*", "+", "?", "(", ")", "{", "}",
 # "|" and "$"
