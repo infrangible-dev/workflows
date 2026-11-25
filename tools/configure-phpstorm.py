@@ -18,6 +18,9 @@
     - ../spelling/words.txt: words for the spell checker, shared with tools/check-spelling.sh, for example from class
       names like ReinitableConfigInterface (.idea/dictionaries/magento.xml; the dictionary "project" of the module
       stays)
+    - .idea/workspace.xml: the Composer synchronization of PhpStorm is switched off (component ComposerSettings); when
+      the installed packages changed, it runs when the project is opened and excludes all packages again, also
+      vendor/magento/magento2-base with the JavaScript libraries and the LESS library that module-folders.xml indexes
     - stubs: declarations for PhpStorm only, added as include path (.idea/php.xml), relative to the module, so the
       workflows repository has to be next to the modules
 
@@ -364,6 +367,23 @@ def missing_generated_classes(directory: Path) -> list[str]:
     return sorted(set(missing))
 
 
+def apply_composer_settings(workspace: str) -> str:
+    """Switches the Composer synchronization off in the workspace (written by PhpStorm when it opens the project)."""
+    if not workspace:
+        return workspace
+    component = re.search(r'<component name="ComposerSettings"[^>]*?(/?)>', workspace)
+    if not component:
+        return workspace.replace(
+            "</project>", '  <component name="ComposerSettings" synchronizationState="DONT_SYNCHRONIZE" />\n</project>', 1
+        )
+    element = component.group(0)
+    if 'synchronizationState="' in element:
+        updated = re.sub(r'synchronizationState="[^"]*"', 'synchronizationState="DONT_SYNCHRONIZE"', element)
+    else:
+        updated = element.replace('name="ComposerSettings"', 'name="ComposerSettings" synchronizationState="DONT_SYNCHRONIZE"')
+    return workspace.replace(element, updated, 1)
+
+
 def apply_component(misc: str, name: str, component: str) -> str:
     pattern = re.compile(r'[ \t]*<component name="' + name + r'">.*?</component>\n', re.S)
     if pattern.search(misc):
@@ -419,6 +439,7 @@ def main() -> int:
                 lambda s, library=js_library(name, library_files): library
             )
         files[idea / "jsLibraryMappings.xml"] = lambda s: apply_js_library_mappings(s, list(libraries))
+        files[idea / "workspace.xml"] = apply_composer_settings
         for iml in sorted(idea.glob("*.iml")):
             files[iml] = lambda s: apply_folders(s, index, exclude, directory)
         for schema in uncorrected_schemas(directory, resources):
