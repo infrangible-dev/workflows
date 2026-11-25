@@ -1283,6 +1283,18 @@ if grep -rnP --include='*.php' --include='*.phtml' --include='*.html' '<html(?![
   failed=1
 fi
 
+# XML files point to their schema with a URN (urn:magento:module:Vendor_Module:etc/file.xsd); PhpStorm cannot resolve
+# a relative location like "layout_update.xsd" ("Cannot resolve file"), Magento validates with its schema locator
+if grep -rnE --include='*.xml' 'noNamespaceSchemaLocation="[^u"]' src; then
+  message="Point XML files to their schema with a URN (urn:magento:module:Vendor_Module:etc/file.xsd), PhpStorm cannot resolve a relative schema location"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # the module that presents Infrangible in the admin
 name=$(python3 -c 'import json; print(json.load(open("composer.json")).get("name", ""))')
 if [[ -z "${RULES_DIR}" ]] && [[ "${name}" != "infrangible/m2-foundation" ]] && ! python3 -c '

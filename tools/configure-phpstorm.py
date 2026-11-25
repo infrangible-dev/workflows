@@ -6,7 +6,8 @@
     - inspections.xml: inspection settings, written into the "Project Default" profile of every module
       (.idea/inspectionProfiles/Project_Default.xml) and, with --ide-profile, into the IDE profile; each
       inspection_tool element replaces the one of the same class
-    - project-resources.xml: XML schema catalog for urn:magento:... (component ProjectResources in .idea/misc.xml)
+    - project-resources.xml: XML schema catalog for urn:magento:... (component ProjectResources in .idea/misc.xml),
+      completed with the schemas of the module and of the Infrangible modules in its vendor folder
       with corrected copies of Magento schemas in schemas, relative to the module like the stubs
     - entry-points.xml: class patterns the inspection "Unused declaration" treats as used (component
       PhpEntryPointsManager in .idea/misc.xml)
@@ -125,6 +126,26 @@ def profile_settings() -> str:
 def project_resources() -> str:
     source = (TEMPLATE_PATH / "project-resources.xml").read_text(encoding="utf-8")
     return re.search(r'  <component name="ProjectResources">.*?</component>\n', source, re.S).group(0)
+
+
+def infrangible_resources(directory: Path, resources: str) -> str:
+    """Adds the schemas of the Infrangible modules (the module and the ones in vendor/infrangible) to the catalog as
+    urn:magento:module:<Module>:etc/<file>.xsd, the form that Magento's dev:urn-catalog:generate uses; the template
+    only knows Magento's schemas."""
+    lines = []
+    for module_dir in [directory] + sorted((directory / "vendor" / "infrangible").glob("*")):
+        registration = module_dir / "src" / "registration.php"
+        if not registration.is_file():
+            continue
+        name = re.search(r"'(Infrangible_\w+)'", registration.read_text(encoding="utf-8", errors="replace"))
+        if name is None:
+            continue
+        for xsd in sorted((module_dir / "src" / "etc").glob("*.xsd")):
+            url = f"urn:magento:module:{name.group(1)}:etc/{xsd.name}"
+            location = "$PROJECT_DIR$/" + xsd.relative_to(directory).as_posix()
+            if f'url="{url}"' not in resources:
+                lines.append(f'    <resource url="{url}" location="{location}"/>\n')
+    return resources.replace("  </component>", "".join(lines) + "  </component>", 1) if lines else resources
 
 
 def module_folders() -> tuple[list[str], list[str]]:
@@ -453,8 +474,8 @@ def main() -> int:
             idea / "inspectionProfiles" / "Project_Default.xml": lambda s: apply_inspections(s or EMPTY_PROFILE, tools),
             idea / "inspectionProfiles" / "profiles_settings.xml": lambda s: settings,
             idea / "dictionaries" / "magento.xml": lambda s: words,
-            idea / "misc.xml": lambda s: apply_component(
-                apply_component(s or EMPTY_MISC, "PhpEntryPointsManager", entries), "ProjectResources", resources),
+            idea / "misc.xml": lambda s, own=infrangible_resources(directory, resources): apply_component(
+                apply_component(s or EMPTY_MISC, "PhpEntryPointsManager", entries), "ProjectResources", own),
             idea / "php.xml": lambda s, level=php_language_level(directory): apply_language_level(
                 apply_unchecked_exceptions(apply_include_path(s or EMPTY_PHP, STUBS_INCLUDE_PATH), unchecked), level),
         }
