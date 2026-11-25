@@ -17,7 +17,10 @@
 # templates had it for scripts that no longer read it; the value is written as "data-price".
 #
 # JavaScript widget options that default to an empty object declare the properties that are read from them,
-# PhpStorm reports them as unresolved otherwise.
+# PhpStorm reports them as unresolved otherwise. This applies also to options that a parent widget of Magento declares
+# as empty object (for example "jsonConfig" of the swatch renderer): properties read from widget options have to be
+# declared somewhere in the JavaScript of the module or of Magento (MAGENTO_ROOT, or the vendor folder of the module
+# in the development environment; without Magento this part is skipped).
 #
 # JavaScript widgets are returned as the value of "$.widget()", which returns the constructor, not read from the
 # namespace that "$.widget()" creates at runtime ("$.infrangible.x"); PhpStorm reports the namespace as unresolved.
@@ -215,6 +218,50 @@ for path in sorted(pathlib.Path('src').rglob('*.js')):
                 print(f'{path}:{number}: options.{name}.{prop} in {line.strip()}')
 PYTHON
 )
+# properties of widget options that no JavaScript of the module or of Magento declares (PhpStorm: "Unresolved
+# variable"), for example of options that a parent widget of Magento declares as empty object
+jsUndeclared=$(python3 - <<'PYTHON'
+import os, pathlib, re
+
+roots = [pathlib.Path(os.environ.get('MAGENTO_ROOT', '')), pathlib.Path('.')]
+magento = next((root for root in roots if str(root) and (root / 'vendor' / 'magento').is_dir()), None)
+
+own = [path for path in sorted(pathlib.Path('src').rglob('*.js'))
+       if 'Andreas Knollmann' in path.read_text(encoding='utf-8', errors='replace')[:1000]]
+reads = []
+for path in own:
+    for number, line in enumerate(path.read_text(encoding='utf-8', errors='replace').splitlines(), 1):
+        for name, prop in re.findall(r'\boptions\.(\w+)\.(\w+)', line.split('//', 1)[0]):
+            reads.append((path, number, name, prop, line.strip()))
+
+if magento is not None and reads:
+    declaration = re.compile(r'(?:^|[{,\s])[\'"]?(\w+)[\'"]?\s*:|\.(\w+)\s*=[^=]')
+    declared = set()
+    files = own + list((magento / 'vendor' / 'magento').glob('*/view/*/web/**/*.js')) + \
+        list((magento / 'vendor' / 'magento' / 'magento2-base' / 'lib' / 'web').glob('**/*.js'))
+    for path in files:
+        try:
+            source = path.read_text(encoding='utf-8', errors='replace')
+        except OSError:
+            continue
+        for match in declaration.finditer(source):
+            declared.add(match.group(1) or match.group(2))
+    for path, number, name, prop, line in reads:
+        if prop not in declared:
+            print(f'{path}:{number}: options.{name}.{prop} in {line}')
+PYTHON
+)
+if [[ -n "${jsUndeclared}" ]]; then
+  echo "${jsUndeclared}"
+  message="Declare the properties that are read from JavaScript widget options in the options of the widget, PhpStorm reports them as unresolved otherwise"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 if [[ -n "${jsOption}" ]]; then
   echo "${jsOption}"
   message="Declare the properties of JavaScript widget options in their default instead of an empty object '{}'"
