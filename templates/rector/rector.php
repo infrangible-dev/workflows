@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Rector configuration of tools/check-php-syntax.sh: reports code that PHP 8.2 writes shorter or safer (constructor
+ * Rector configuration of tools/check-php-syntax.sh: reports code that PHP 8.1 writes shorter or safer (constructor
  * property promotion, readonly properties, null coalescing assignment, arrow functions, ...).
  *
  * Environment variables:
@@ -37,7 +37,7 @@ if (is_dir($magentoRoot . '/generated/code')) {
 return RectorConfig::configure()
     ->withPaths([$moduleDir . '/src'])
     ->withAutoloadPaths($scan)
-    ->withPhpSets(php82: true)
+    ->withPhpSets(php81: true)
     ->withSkip([
         // Magento PHPCS discourages intval(), strval() etc., so the string callables are kept
         FunctionFirstClassCallableRector::class,

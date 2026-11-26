@@ -12,10 +12,14 @@ On every push and pull request, for each combination of the matrix:
 
 | Magento | PHP |
 |---------|-----|
-| 2.4.6   | 8.2 |
-| 2.4.7   | 8.3 |
+| 2.4.6   | 8.1 |
+| 2.4.7   | 8.2 |
+| 2.4.8   | 8.3 |
 | 2.4.8   | 8.4 |
 | 2.4.9   | 8.5 |
+
+Every PHP version that one of the Magento versions supports is tested once, because the Adobe Commerce Marketplace
+rejects modules that allow fewer PHP versions than the Magento versions they support (PHP 8.1 with Magento 2.4.6).
 
 1. A Magento project of the newest patch release of the version is created with Composer from the
    [Mage-OS mirror](https://mirror.mage-os.org/), so no access keys for repo.magento.com are needed, and the module is
@@ -52,7 +56,7 @@ On every push and pull request, for each combination of the matrix:
      [infrangible/phpstan-magento](https://github.com/infrangible-dev/phpstan-magento) (composer type
      `phpstan-extension`), it also checks the PHPStan rules in `src` and the shared PHP files in the root directory
      (`bootstrap.php`, `versions.php`): no tags in running text, every parameter documented, imports instead of
-     qualified names, also in the shared PHP files, where global classes need no leading backslash, readonly classes,
+     qualified names, also in the shared PHP files, where global classes need no leading backslash,
      no node classes that php-parser 5 deprecates, because the rules run with php-parser 4 of PHPStan 1 and php-parser
      5 of PHPStan 2; PHP extensions: the shared files only run in the PHPStan of Magento, whose framework requires them,
      and suppress `PhpComposerExtensionStubsInspection` with that reason, other PHP files of a module outside of `src`
@@ -63,7 +67,7 @@ On every push and pull request, for each combination of the matrix:
      the file creates, with the `parents` of `src/phpstorm-throws.php` for inherited methods), unless the throws tag of
      the documented function or closure around them declares it: PhpStorm did not apply catch clauses in the closures
      of `bootstrap.php`
-   - syntax of PHP 8.2 (constructor property promotion, readonly properties, null coalescing assignment, arrow
+   - syntax of PHP 8.1 (constructor property promotion, readonly properties, null coalescing assignment, arrow
      functions, ...), checked with [Rector](https://getrector.com) and `templates/rector/rector.php` through
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes
    - no duplicated code (at least 5 identical lines and 100 tokens, variable names ignored, like the PhpStorm
@@ -159,7 +163,7 @@ configuration have to load the Magento installation from `MAGENTO_ROOT` (see `te
 
 | File                       | Purpose                                                                  |
 |----------------------------|--------------------------------------------------------------------------|
-| `phpcs.xml`                | Magento2 coding standard and PHP 8.2 compatibility for `src`             |
+| `phpcs.xml`                | Magento2 coding standard and PHP 8.1 compatibility for `src`             |
 | `phpstan.neon`             | PHPStan for `src` with the configuration of `infrangible/phpstan-magento` |
 | `phpunit.xml`              | unit tests in `src/Test/Unit`                                            |
 | `phpunit.bootstrap.php`    | loads the bootstrap of the Magento unit tests from `MAGENTO_ROOT`        |

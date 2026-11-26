@@ -1283,47 +1283,6 @@ then
   failed=1
 fi
 
-# classes of the PHPStan rules that can be readonly
-readonlyClasses=$(python3 - <<'PYTHON'
-import os, pathlib, re
-
-paths = (sorted(pathlib.Path(os.environ['RULES_DIR']).glob('*.php')) if os.environ['RULES_DIR'] else [])
-for path in paths:
-    source = path.read_text(encoding='utf-8', errors='replace')
-    for match in re.finditer(r'^((?:(?:abstract|final|readonly)\s+)*)class\s+(\w+)([^{]*)\{', source, re.M):
-        modifiers, name, declaration = match.groups()
-        if 'readonly' in modifiers or re.search(r'\bextends\b', declaration):
-            continue
-        # the body of the class
-        depth, end = 0, len(source)
-        for position in range(match.end() - 1, len(source)):
-            if source[position] == '{':
-                depth += 1
-            elif source[position] == '}':
-                depth -= 1
-                if depth == 0:
-                    end = position
-                    break
-        body = source[match.end():end]
-        properties = re.findall(r'^\s*((?:(?:public|protected|private|static|readonly)\s+)+)(?:\??[\w\\|]+\s+)?\$\w+', body, re.M)
-        constructor = re.search(r'function\s+__construct\s*\((.*?)\)\s*\{', body, re.S)
-        if constructor:
-            properties += re.findall(r'((?:(?:public|protected|private|readonly)\s+)+)(?:\??[\w\\|]+\s+)?\$\w+', constructor.group(1))
-        if properties and all('readonly' in p and 'static' not in p for p in properties):
-            print(f'{path}:{source.count(chr(10), 0, match.start()) + 1}: class {name}')
-PYTHON
-)
-if [[ -n "${readonlyClasses}" ]]; then
-  echo "${readonlyClasses}"
-  message="Declare classes whose properties are all readonly as 'readonly class' (PHP 8.2)"
-  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
-    echo "::error::${message}"
-  else
-    echo "${message}" >&2
-  fi
-  failed=1
-fi
-
 # methods of the PHPStan rules that return a single rule error
 if [[ -n "${RULES_DIR}" ]] && grep -nP 'function\s+\w+\s*\([^)]*\)\s*:\s*\??\\?(?:[\w\\]*\\)?(?:Identifier)?RuleError\b' "${RULES_DIR}"/*.php; then
   message="Return the rule errors of RuleErrorBuilder::build() in the array of processNode(), PhpStorm does not resolve its generic type"

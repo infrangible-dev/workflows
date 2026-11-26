@@ -251,7 +251,7 @@ def unchecked_exceptions() -> list[str]:
 
 
 def php_language_level(directory: Path) -> str | None:
-    """The lowest PHP version that composer.json of the module allows (">=8.2" -> "8.2"), or None."""
+    """The lowest PHP version that composer.json of the module allows (">=8.1" -> "8.1"), or None."""
     try:
         constraint = json.loads((directory / "composer.json").read_text()).get("require", {}).get("php", "")
     except (OSError, ValueError):

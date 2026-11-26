@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Checks with Rector that a module uses the syntax of PHP 8.2 (the minimum PHP version of the modules), for example
+# Checks with Rector that a module uses the syntax of PHP 8.1 (the minimum PHP version of the modules), for example
 # constructor property promotion, readonly properties, null coalescing assignment and arrow functions. See
 # templates/rector/rector.php for the rules that are skipped and why.
 #
@@ -30,7 +30,7 @@ MODULE_DIR="$(cd "${moduleDir}" && pwd)" MAGENTO_ROOT="$(cd "${magentoRoot}" && 
 result=$?
 
 if [[ "${result}" -ne 0 ]]; then
-  message="Use the syntax of PHP 8.2 as shown above (see tools/check-php-syntax.sh how to apply it)"
+  message="Use the syntax of PHP 8.1 as shown above (see tools/check-php-syntax.sh how to apply it)"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
