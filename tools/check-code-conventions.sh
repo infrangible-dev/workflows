@@ -44,6 +44,9 @@
 # JavaScript libraries of templates/phpstorm/js-libraries.xml; PhpStorm reports them as "Unresolved variable" otherwise.
 # It does not check objects of unknown type (without Magento this check is skipped).
 #
+# A JSDoc @type comes only before the declaration of one variable: before "const a = ..., b = ...;" it applies to every
+# variable, PhpStorm reports "Initializer type ... is not assignable to variable type ...".
+#
 # JavaScript widgets are returned as the value of "$.widget()", which returns the constructor, not read from the
 # namespace that "$.widget()" creates at runtime ("$.infrangible.x"); PhpStorm reports the namespace as unresolved.
 #
@@ -383,6 +386,40 @@ PYTHON
 if [[ -n "${jsProperties}" ]]; then
   echo "${jsProperties}"
   message="Declare the properties that the JavaScript reads (for example data of the JSON configuration) with a JSDoc @typedef and @property tags, PhpStorm reports them as unresolved otherwise"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# JSDoc @type before a declaration of several variables ("/** @type {X} */ const a = ..., b = ...;"): the type applies
+# to all of them, PhpStorm reports "Initializer type ... is not assignable to variable type X"
+jsTypedDeclarations=$(python3 - <<'PYTHON'
+import pathlib, re
+
+for path in sorted(pathlib.Path('src').rglob('*.js')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    if 'Andreas Knollmann' not in source[:1000]:
+        continue
+    for match in re.finditer(r'/\*\*\s*@type\s+\{[^}]*\}\s*\*/\s*(?:const|let|var)\s', source):
+        depth = 0
+        for char in source[match.end():]:
+            if char in '([{':
+                depth += 1
+            elif char in ')]}':
+                depth -= 1
+            elif char == ';' and depth == 0:
+                break
+            elif char == ',' and depth == 0:
+                print(f'{path}:{source.count(chr(10), 0, match.start()) + 1}: {match.group(0).strip()}')
+                break
+PYTHON
+)
+if [[ -n "${jsTypedDeclarations}" ]]; then
+  echo "${jsTypedDeclarations}"
+  message="Put a JSDoc @type only before the declaration of one variable, it applies to every variable of the declaration (document the type of a parameter or property instead)"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
