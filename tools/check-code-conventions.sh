@@ -40,6 +40,11 @@
 # type (for example "@return mixed") as "Missing 'return' statement". PHPStan does not, when the method has no native
 # return type.
 #
+# Font families of LESS files end with a generic family (sans-serif, monospace, ...) or come from a variable; icon fonts
+# are written with the variable of the theme (@icons__font-name, @icons-admin__font-name), PhpStorm reports a literal
+# icon font as "Font property font-family does not have generic default". Bundled stylesheets (phpcs:ignoreFile) are
+# not checked.
+#
 # Classes that are imported with "use" are written with their short name; PhpStorm reports "\\RuntimeException" after
 # "use RuntimeException;" as "Qualifier is unnecessary and can be removed". Classes that are not imported are imported
 # instead of written with their fully qualified name, also in docblocks ("Qualifier can be replaced with an import"),
@@ -1275,6 +1280,35 @@ fi
 # html elements without lang attribute
 if grep -rnP --include='*.php' --include='*.phtml' --include='*.html' '<html(?![^>]*\blang=)[\s>/]' src; then
   message="Add a lang attribute to <html>, for example <html lang=\"en\">"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# font families of LESS files without generic family (PhpStorm: "does not have generic default"), except variables
+fontFamilies=$(python3 - <<'PYTHON'
+import pathlib, re
+generic = {"serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "ui-serif", "ui-sans-serif",
+           "ui-monospace", "ui-rounded", "emoji", "math", "fangsong", "inherit", "initial", "unset", "revert",
+           "revert-layer"}
+for path in sorted(pathlib.Path("src").rglob("*.less")):
+    text = path.read_text(encoding="utf-8")
+    if "phpcs:ignoreFile" in text:
+        continue
+    for number, line in enumerate(text.splitlines(), 1):
+        match = re.match(r"\s*font-family\s*:\s*([^;]+);", line)
+        if not match or "@" in match.group(1):
+            continue
+        if match.group(1).split(",")[-1].strip().strip("'\"").lower() not in generic:
+            print(f"{path}:{number}:{line.strip()}")
+PYTHON
+)
+if [[ -n "${fontFamilies}" ]]; then
+  echo "${fontFamilies}"
+  message="End font families with a generic family ('Arial, sans-serif'), or use the variable of the theme for icon fonts (@icons__font-name), PhpStorm reports 'does not have generic default'"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
