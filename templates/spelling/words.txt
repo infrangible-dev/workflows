@@ -102,6 +102,7 @@ weee
 catalogattributelandingpage
 catalogproductpos
 catalogproductpricecalculation
+etrusted
 retailstore
 
 # Proper names in demo and test data (German places and streets)

@@ -38,6 +38,7 @@
         <file path="vendor/magento/module-checkout/view/frontend/web/js/checkout-data.js" />
         <file path="vendor/magento/module-checkout/view/frontend/web/js/model/shipping-save-processor/payload-extender.js" />
         <file path="vendor/magento/module-ui/view/base/web/js/modal/modal.js" />
+        <file path="vendor/magento/module-page-builder/view/base/web/js/resource/slick/slick.js" />
         <file path="vendor/magento/module-ui/view/base/web/js/modal/alert.js" />
     </library>
     <!--
