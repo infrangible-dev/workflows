@@ -24,6 +24,12 @@
       vendor/magento/magento2-base with the JavaScript libraries and the LESS library that module-folders.xml indexes
     - stubs: declarations for PhpStorm only, added as include path (.idea/php.xml), relative to the module, so the
       workflows repository has to be next to the modules
+    - ESLint with the rules of the Magento coding standard, like tools/check-eslint.sh: the rules and their npm
+      packages are installed into .eslint of the workflows (not in git) from vendor/magento/magento-coding-standard of
+      a module with a running development environment (or of MAGENTO_ROOT) with npm, again when its package-lock.json
+      changes; every module gets .idea/eslint.config.mjs, which loads them without the bundled JavaScript libraries of
+      the module (files without the copyright header of Andreas Knollmann), .idea/jsLinters/eslint.xml, which points
+      PhpStorm to it, and the ESLint package and Node.js of WSL in .idea/workspace.xml (component PropertiesComponent)
 
 Modules without a .idea folder are skipped; PhpStorm creates it when the module is opened for the first time, so run
 the script again afterwards. PhpStorm reloads changed project files; if a module is open, check that the settings are
@@ -43,7 +49,10 @@ Usage: configure-phpstorm.py [--check] [--ide-profile <file>] <module directory>
 """
 
 import json
+import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -58,6 +67,18 @@ EMPTY_PROFILE = """<component name="InspectionProjectProfileManager">
 
 
 STUBS_INCLUDE_PATH = "$PROJECT_DIR$/../workflows/templates/phpstorm/stubs"
+
+ESLINT_PATH = Path(__file__).resolve().parent.parent / ".eslint"
+
+ESLINT_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="EslintConfiguration">
+    <custom-configuration-file used="true" path="$PROJECT_DIR$/.idea/eslint.config.mjs" />
+  </component>
+</project>
+"""
+
+NODE_PATH = "/usr/bin/node"
 
 EMPTY_PHP = """<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
@@ -431,6 +452,85 @@ def apply_composer_settings(workspace: str) -> str:
     return workspace.replace(element, updated, 1)
 
 
+def coding_standard(directories: list[Path]) -> Path | None:
+    """The Magento coding standard of MAGENTO_ROOT or of the vendor folder of one of the modules."""
+    roots = ([Path(os.environ["MAGENTO_ROOT"])] if os.environ.get("MAGENTO_ROOT") else []) + directories
+    for root in roots:
+        standard = root / "vendor" / "magento" / "magento-coding-standard"
+        if (standard / "eslint" / "eslint.config.mjs").is_file() and (standard / "package-lock.json").is_file():
+            return standard
+    return None
+
+
+def install_eslint(directories: list[Path], check: bool) -> bool:
+    """Installs the ESLint rules of the Magento coding standard with their npm packages into ESLINT_PATH, if they are
+    missing or the coding standard has another package-lock.json; returns whether they are installed."""
+    installed = (ESLINT_PATH / "node_modules" / "eslint").is_dir()
+    standard = coding_standard(directories)
+    lock = ESLINT_PATH / "package-lock.json"
+    if standard is None or check or (installed and lock.is_file()
+                                     and lock.read_bytes() == (standard / "package-lock.json").read_bytes()):
+        if not installed:
+            print("ESLint is not installed: needs the Magento coding standard (vendor/magento/magento-coding-standard of"
+                  " a module with a running development environment, or MAGENTO_ROOT) and npm")
+        return installed
+    ESLINT_PATH.mkdir(exist_ok=True)
+    shutil.rmtree(ESLINT_PATH / "eslint", ignore_errors=True)
+    shutil.copytree(standard / "eslint", ESLINT_PATH / "eslint")
+    for name in ("package.json", "package-lock.json"):
+        shutil.copyfile(standard / name, ESLINT_PATH / name)
+    result = subprocess.run(["npm", "ci", "--no-audit", "--no-fund", "--no-update-notifier", "--loglevel=error"],
+                            cwd=ESLINT_PATH)
+    if result.returncode != 0:
+        print(f"Could not install the npm packages of the Magento coding standard into {ESLINT_PATH}")
+        return False
+    print(f"Installed ESLint with the rules of the Magento coding standard into {ESLINT_PATH}")
+    return True
+
+
+def eslint_config(directory: Path) -> str:
+    """The ESLint configuration of the module: the rules of the Magento coding standard, without the folders of the
+    Magento installation and without bundled libraries (JavaScript files without the copyright header)."""
+    ignores = ["**/vendor/**", "**/generated/**", "**/pub/**", "**/var/**", "**/app/**", "**/.idea/**"]
+    for path in sorted((directory / "src").rglob("*.js")):
+        if "Andreas Knollmann" not in path.read_text(encoding="utf-8", errors="replace")[:1000]:
+            ignores.append("**/" + path.relative_to(directory).as_posix())
+    entries = "".join(f"            '{ignore}',\n" for ignore in ignores)
+    return ("// ESLint configuration of PhpStorm, written by tools/configure-phpstorm.py of the workflows: the rules of the\n"
+            "// Magento coding standard, which tools/check-eslint.sh applies in the checks, without bundled libraries.\n"
+            "import config from '../../workflows/.eslint/eslint/eslint.config.mjs';\n\n"
+            "export default [\n    {\n        ignores: [\n" + entries.rstrip(",\n") + "\n        ]\n    }\n].concat(config);\n")
+
+
+def ide_path(path: str) -> str:
+    """The path as PhpStorm on Windows sees a path in WSL (//wsl.localhost/<distribution>/...)."""
+    distribution = os.environ.get("WSL_DISTRO_NAME")
+    return f"//wsl.localhost/{distribution}{path}" if distribution else path
+
+
+def apply_eslint_properties(workspace: str) -> str:
+    """Sets the ESLint package of ESLINT_PATH and the Node.js of WSL in the properties of the workspace."""
+    if not workspace:
+        return workspace
+    properties = {
+        "node.js.detected.package.eslint": "true",
+        "node.js.selected.package.eslint": ide_path(str(ESLINT_PATH / "node_modules" / "eslint")),
+        "nodejs_interpreter_path": ide_path(NODE_PATH),
+    }
+    component = re.search(r'(<component name="PropertiesComponent"><!\[CDATA\[)(.*?)(\]\]></component>)', workspace, re.S)
+    if not component:
+        content = json.dumps({"keyToString": properties}, indent=2)
+        return workspace.replace(
+            "</project>", f'  <component name="PropertiesComponent"><![CDATA[{content}]]></component>\n</project>', 1)
+    data = json.loads(component.group(2))
+    key_to_string = data.setdefault("keyToString", {})
+    if all(key_to_string.get(key) == value for key, value in properties.items()):
+        return workspace
+    key_to_string.update(properties)
+    data["keyToString"] = dict(sorted(key_to_string.items()))
+    return workspace[:component.start(2)] + json.dumps(data, indent=2) + workspace[component.end(2):]
+
+
 def apply_component(misc: str, name: str, component: str) -> str:
     pattern = re.compile(r'[ \t]*<component name="' + name + r'">.*?</component>\n', re.S)
     if pattern.search(misc):
@@ -461,6 +561,7 @@ def main() -> int:
     libraries = js_libraries()
     index = index + library_folders(libraries, index)
     unchecked = unchecked_exceptions()
+    eslint = install_eslint(directories, check)
     outdated = False
     schema_problems = False
 
@@ -486,7 +587,12 @@ def main() -> int:
                 lambda s, library=js_library(name, library_files): library
             )
         files[idea / "jsLibraryMappings.xml"] = lambda s: apply_js_library_mappings(s, list(libraries))
-        files[idea / "workspace.xml"] = apply_composer_settings
+        files[idea / "workspace.xml"] = (
+            (lambda s: apply_eslint_properties(apply_composer_settings(s))) if eslint else apply_composer_settings
+        )
+        if eslint:
+            files[idea / "eslint.config.mjs"] = lambda s, config=eslint_config(directory): config
+            files[idea / "jsLinters" / "eslint.xml"] = lambda s: ESLINT_XML
         for iml in sorted(idea.glob("*.iml")):
             files[iml] = lambda s: apply_folders(s, index, exclude, directory)
         for schema in uncorrected_schemas(directory, resources):

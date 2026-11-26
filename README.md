@@ -258,6 +258,16 @@ tools/add-return-tags.py ../m2-core/src
 | `js-libraries.xml`       | `.idea/libraries/`, `.idea/jsLibraryMappings.xml`  | Magento's RequireJS, jQuery, ... (`lib/web`), scripts of Magento's modules that modules extend (price box, swatch renderer, ...), the Google Maps API (`stubs/google-maps.d.ts`), jQuery plugins of bundled libraries (`stubs/jquery-plugins.js`) |
 | `scopes.xml`             | `.idea/scopes/`                                    | scopes the inspections refer to (shared configuration) |
 | `../spelling/words.txt`  | `.idea/dictionaries/magento.xml`                   | words for the spell checker, shared with `tools/check-spelling.sh` |
+| (ESLint)                 | `.idea/eslint.config.mjs`, `.idea/jsLinters/eslint.xml`, `.idea/workspace.xml` | ESLint with the rules of the Magento coding standard, like `tools/check-eslint.sh` (see below) |
+
+PhpStorm reports the JavaScript of a module with ESLint and the rules of the Magento coding standard, like the check
+`tools/check-eslint.sh`. `configure-phpstorm.py` installs the rules with their npm packages into `.eslint` of this
+repository (not in git) from `vendor/magento/magento-coding-standard` of a module whose development environment is
+running (or of `MAGENTO_ROOT`), with npm of WSL, and again when its `package-lock.json` changes. Every module gets
+`.idea/eslint.config.mjs`, which loads these rules without the folders of the Magento installation and without the
+bundled libraries of the module (JavaScript files without the copyright header), `.idea/jsLinters/eslint.xml`, which
+points PhpStorm to it, and the ESLint package and the Node.js of WSL (`/usr/bin/node`) in the properties of
+`.idea/workspace.xml`. New settings apply when the project is opened, so close it before running the script.
 
 The folders of the files of `js-libraries.xml` (for example `lib/web/requirejs` with `define()`) are indexed as well:
 PhpStorm's Composer synchronization excludes `vendor/magento/magento2-base`, and files of a JavaScript library in an

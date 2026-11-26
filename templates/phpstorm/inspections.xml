@@ -68,4 +68,10 @@
     <inspection_tool class="DuplicatedCode" enabled="true" level="WEAK WARNING" enabled_by_default="true">
       <scope name="Shared configuration" level="WEAK WARNING" enabled="false" />
     </inspection_tool>
+    <!--
+     * JavaScript: the ESLint rules of the Magento coding standard, which tools/check-eslint.sh applies in the checks
+     * and the Adobe Commerce Marketplace in its review; configure-phpstorm.py writes the configuration of every module
+     * (.idea/eslint.config.mjs, .idea/jsLinters/eslint.xml) and installs ESLint into .eslint of the workflows.
+    -->
+    <inspection_tool class="Eslint" enabled="true" level="WARNING" enabled_by_default="true" />
 </inspections>
