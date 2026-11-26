@@ -39,6 +39,11 @@
 # module: PhpStorm resolves $this as the class around the closure and reports for example "Method '_toHtml' not found
 # in ItemTest"; tests call public methods instead. The shared PHP files of phpstan-magento are not checked.
 #
+# Properties that the JavaScript of the module reads from objects documented as plain object ("@param {Object} values")
+# are declared by the module (a JSDoc @typedef with @property tags, used as type instead of "Object") or by the
+# JavaScript libraries of templates/phpstorm/js-libraries.xml; PhpStorm reports them as "Unresolved variable" otherwise.
+# It does not check objects of unknown type (without Magento this check is skipped).
+#
 # JavaScript widgets are returned as the value of "$.widget()", which returns the constructor, not read from the
 # namespace that "$.widget()" creates at runtime ("$.infrangible.x"); PhpStorm reports the namespace as unresolved.
 #
@@ -311,6 +316,73 @@ PYTHON
 if [[ -n "${jsUndeclared}" ]]; then
   echo "${jsUndeclared}"
   message="Declare the properties that are read from JavaScript widget options (or from their elements, for example with a JSDoc @typedef and @property tags), PhpStorm reports them as unresolved otherwise"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# properties that the JavaScript of the module reads from objects documented as plain object ("@param {Object} values",
+# then "values.defaultValues") and that neither the module nor the JavaScript libraries of
+# templates/phpstorm/js-libraries.xml declare (PhpStorm: "Unresolved variable"), for example data of the JSON
+# configuration from PHP; declare them with a JSDoc @typedef and @property tags and use the type instead of "Object"
+jsProperties=$(python3 - <<'PYTHON'
+import os, pathlib, re
+
+roots = [pathlib.Path(os.environ.get('MAGENTO_ROOT', '')), pathlib.Path('.')]
+magento = next((root for root in roots if str(root) and (root / 'vendor' / 'magento').is_dir()), None)
+libraries = pathlib.Path(os.environ.get('TEMPLATES_DIR', '')) / 'phpstorm' / 'js-libraries.xml'
+# properties of the browser that PhpStorm knows from its declarations of the DOM, but no library declares
+browser = {'addedNodes', 'removedNodes', 'localStorage', 'sessionStorage'}
+declaration = re.compile(r'(?:^|[{,\s])[\'"]?([A-Za-z_$][\w$]*)[\'"]?\s*:|\.([A-Za-z_$][\w$]*)\s*=[^=]|'
+                         r'@property\s+\{[^}]*\}\s+\[?([A-Za-z_$][\w$]*)|function\s+([A-Za-z_$][\w$]*)|'
+                         r'prototype\.([A-Za-z_$][\w$]*)')
+
+own = [path for path in sorted(pathlib.Path('src').rglob('*.js'))
+       if 'Andreas Knollmann' in path.read_text(encoding='utf-8', errors='replace')[:1000]]
+
+if magento is not None and libraries.is_file() and own:
+    declared = set(browser)
+    files = list(own)
+    for library_file in re.findall(r'<file path="([^"]+)"', libraries.read_text(encoding='utf-8')):
+        files.append(magento / library_file if library_file.startswith('vendor/') else
+                     libraries.parent / 'stubs' / pathlib.Path(library_file).name)
+    for path in files:
+        try:
+            source = path.read_text(encoding='utf-8', errors='replace')
+        except OSError:
+            continue
+        for match in declaration.finditer(source):
+            declared.update(group for group in match.groups() if group)
+    for path in own:
+        source = path.read_text(encoding='utf-8', errors='replace')
+        # PhpStorm only checks the properties of objects whose type it knows: variables and parameters documented as
+        # plain object ("@param {Object} values", "@type {Object<string, string>}"), and variables assigned from them
+        typed = set(re.findall(r'@param\s+\{\??Object(?:<[^}]*>)?\}\s+\[?([A-Za-z_$][\w$]*)', source))
+        typed |= set(re.findall(r'@type\s+\{\??Object(?:<[^}]*>)?\}\s*\*/\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)', source))
+        changed = True
+        while changed:
+            assigned = set(re.findall(r'\b([A-Za-z_$][\w$]*)\s*=\s*(' + '|'.join(map(re.escape, typed)) + r')\b(?:\[[^\]]*\])*\s*[,;]',
+                                      source)) if typed else set()
+            names = {name for name, _ in assigned} - typed
+            typed |= names
+            changed = bool(names)
+        if not typed:
+            continue
+        # without comments and strings, with the same length so that line numbers stay
+        code = re.sub(r'/\*.*?\*/|//[^\n]*|\'(?:\\.|[^\'\\\n])*\'|"(?:\\.|[^"\\\n])*"',
+                      lambda match: re.sub(r'[^\n]', ' ', match.group(0)), source, flags=re.S)
+        receivers = '|'.join(map(re.escape, sorted(typed)))
+        for match in re.finditer(r'(?<![\w$.])(?:' + receivers + r')(?:\[[^\]\n]*\])*\.([A-Za-z_$][\w$]*)\b(?!\s*\()', code):
+            if match.group(1) not in declared:
+                print(f'{path}:{code.count(chr(10), 0, match.start()) + 1}: .{match.group(1)}')
+PYTHON
+)
+if [[ -n "${jsProperties}" ]]; then
+  echo "${jsProperties}"
+  message="Declare the properties that the JavaScript reads (for example data of the JSON configuration) with a JSDoc @typedef and @property tags, PhpStorm reports them as unresolved otherwise"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
