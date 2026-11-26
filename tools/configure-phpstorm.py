@@ -21,7 +21,8 @@
       stays)
     - Magento files: the JavaScript libraries in vendor and the LESS library of Magento are copied into
       .phpstorm-magento of the workflows (not in git) from a module with a running development environment (or
-      MAGENTO_ROOT); the libraries point to the copies and the LESS library becomes a content root of every module,
+      MAGENTO_ROOT); the libraries point to the copies, which are a content root of every module (PhpStorm does not
+      index library files outside of the content roots),
       because PhpStorm excludes all packages in vendor again when it opens a project after the installed packages
       changed, also with its Composer synchronization switched off
     - .idea/workspace.xml: the Composer synchronization of PhpStorm is switched off (component ComposerSettings), and so
@@ -399,10 +400,15 @@ def library_path(path: str, copied: bool) -> str:
     return f"{MAGENTO_COPY_URL}/{path}" if copied and path.startswith("vendor/") else path
 
 
-def apply_content_root(iml: str, url: str) -> str:
-    """Adds a content root after the one of the module, if it is missing."""
+def apply_content_root(iml: str, url: str, replaced: str) -> str:
+    """Adds a content root after the one of the module, if it is missing, instead of the content root "replaced" (the
+    LESS library only, before the JavaScript libraries were indexed through the copy as well: PhpStorm does not index
+    library files outside of the content roots, define() of RequireJS was unresolved)."""
+    if not iml:
+        return iml
+    iml = re.sub(r'[ \t]*<content url="' + re.escape(replaced) + r'" />\n', "", iml)
     element = f'<content url="{url}" />'
-    if element in iml or not iml:
+    if element in iml:
         return iml
     content = re.search(r'([ \t]*)<content url="file://\$MODULE_DIR\$"\s*(/>|>.*?</content>)\n', iml, re.S)
     if not content:
@@ -690,6 +696,7 @@ def main() -> int:
         for iml in sorted(idea.glob("*.iml")):
             files[iml] = lambda s: (
                 apply_content_root(remove_nested_excludes(apply_folders(s, index, exclude, directory), exclude),
+                                   f"file://$MODULE_DIR$/{MAGENTO_COPY_URL}",
                                    f"file://$MODULE_DIR$/{MAGENTO_COPY_URL}/{LESS_LIBRARY}")
                 if copied else apply_folders(s, index, exclude, directory)
             )

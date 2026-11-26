@@ -265,8 +265,8 @@ changed, also with its Composer synchronization switched off; Magento's LESS var
 functions of the JavaScript libraries (`define()`) would then be unresolved. So `configure-phpstorm.py` copies the files
 of the JavaScript libraries in `vendor` and Magento's LESS library (`lib/web/css/source`) into `.phpstorm-magento` of
 this repository (not in git) from a module whose development environment is running (or `MAGENTO_ROOT`), points the
-libraries to the copies and makes the LESS library an additional content root of every module; the Composer packages
-themselves stay excluded. The copies are updated whenever the files in `vendor` differ.
+libraries to the copies and makes the copy an additional content root of every module, because PhpStorm only indexes
+library files inside the content roots; the Composer packages themselves stay excluded. The copies are updated whenever the files in `vendor` differ.
 
 PhpStorm reports the JavaScript of a module with ESLint and the rules of the Magento coding standard, like the check
 `tools/check-eslint.sh`. `configure-phpstorm.py` installs the rules with their npm packages into `.eslint` of this
