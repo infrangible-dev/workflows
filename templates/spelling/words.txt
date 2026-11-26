@@ -71,6 +71,7 @@ onepage
 opensearch
 pagemap
 persistor
+preselection
 qtys
 reinit
 reinitable
