@@ -35,6 +35,10 @@
 # exists (function_exists(), class_exists(), PHP_VERSION_ID): the modules support PHP 8.1, a suppression without check
 # hid memory_reset_peak_usage() of PHP 8.2.
 #
+# Closures that use $this are not bound to other objects (Closure::call(), Closure::bind(), bindTo()) in the code of a
+# module: PhpStorm resolves $this as the class around the closure and reports for example "Method '_toHtml' not found
+# in ItemTest"; tests call public methods instead. The shared PHP files of phpstan-magento are not checked.
+#
 # JavaScript widgets are returned as the value of "$.widget()", which returns the constructor, not read from the
 # namespace that "$.widget()" creates at runtime ("$.infrangible.x"); PhpStorm reports the namespace as unresolved.
 #
@@ -1279,6 +1283,31 @@ sys.exit(1 if failed else 0)
 PY
 then
   message="Document every parameter in the docblocks of the PHPStan rules"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# closures that use $this and are bound to another object (Closure::call(), Closure::bind(), bindTo()): PhpStorm resolves
+# $this as the class around the closure and reports the methods and properties of the object as not found
+reboundClosures=$(python3 - <<'PYTHON'
+import pathlib, re
+
+for path in sorted(pathlib.Path('src').rglob('*.php')):
+    source = path.read_text(encoding='utf-8', errors='replace')
+    for match in re.finditer(r'(\)->call\(|\bClosure::bind\(|->bindTo\()', source):
+        before = source[max(0, match.start() - 600):match.start() + 600]
+        closure = re.search(r'(?:\bfn\s*\(|\bfunction\s*\()[^;]*?\$this->', before, re.S)
+        if closure:
+            print(f'{path}:{source.count(chr(10), 0, match.start()) + 1}: {match.group(1)}')
+PYTHON
+)
+if [[ -n "${reboundClosures}" ]]; then
+  echo "${reboundClosures}"
+  message="Do not bind closures that use \$this to other objects (->call(), Closure::bind(), bindTo()) in the module, PhpStorm resolves \$this as the class around the closure; call public methods instead"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
