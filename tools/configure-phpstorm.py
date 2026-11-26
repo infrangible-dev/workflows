@@ -24,9 +24,8 @@
       MAGENTO_ROOT); the libraries point to the copies and the LESS library becomes a content root of every module,
       because PhpStorm excludes all packages in vendor again when it opens a project after the installed packages
       changed, also with its Composer synchronization switched off
-    - .idea/workspace.xml: the Composer synchronization of PhpStorm is switched off (component ComposerSettings); when
-      the installed packages changed, it runs when the project is opened and excludes all packages again, also
-      vendor/magento/magento2-base with the JavaScript libraries and the LESS library that module-folders.xml indexes
+    - .idea/workspace.xml: the Composer synchronization of PhpStorm is switched off (component ComposerSettings), and so
+      are the checks for package updates, the notification about a missing vendor folder and the quick actions panel
     - stubs: declarations for PhpStorm only, added as include path (.idea/php.xml), relative to the module, so the
       workflows repository has to be next to the modules
     - ESLint with the rules of the Magento coding standard, like tools/check-eslint.sh: the rules and their npm
@@ -508,20 +507,34 @@ def missing_generated_classes(directory: Path) -> list[str]:
     return sorted(set(missing))
 
 
+COMPOSER_SETTINGS = {
+    # "Synchronize IDE settings with composer.json" off: it would set the PHP version and exclude the packages again
+    "synchronizationState": "DONT_SYNCHRONIZE",
+    # the three options of Settings > PHP > Composer that the user switched off: check for package updates, notify about
+    # a missing vendor folder, show the quick actions panel above composer.json
+    "loadUpdateAvailability": "false",
+    "notifyAboutMissingVendor": "false",
+    "showQuickActionsPanel": "false",
+}
+
+
 def apply_composer_settings(workspace: str) -> str:
-    """Switches the Composer synchronization off in the workspace (written by PhpStorm when it opens the project)."""
+    """Sets the Composer settings of PhpStorm in the workspace (written by PhpStorm when it opens the project)."""
     if not workspace:
         return workspace
     component = re.search(r'<component name="ComposerSettings"[^>]*?(/?)>', workspace)
     if not component:
+        attributes = " ".join(f'{name}="{value}"' for name, value in sorted(COMPOSER_SETTINGS.items()))
         return workspace.replace(
-            "</project>", '  <component name="ComposerSettings" synchronizationState="DONT_SYNCHRONIZE" />\n</project>', 1
+            "</project>", f'  <component name="ComposerSettings" {attributes} />\n</project>', 1
         )
     element = component.group(0)
-    if 'synchronizationState="' in element:
-        updated = re.sub(r'synchronizationState="[^"]*"', 'synchronizationState="DONT_SYNCHRONIZE"', element)
-    else:
-        updated = element.replace('name="ComposerSettings"', 'name="ComposerSettings" synchronizationState="DONT_SYNCHRONIZE"')
+    updated = element
+    for name, value in sorted(COMPOSER_SETTINGS.items()):
+        if f'{name}="' in updated:
+            updated = re.sub(name + r'="[^"]*"', f'{name}="{value}"', updated)
+        else:
+            updated = updated.replace('name="ComposerSettings"', f'name="ComposerSettings" {name}="{value}"', 1)
     return workspace.replace(element, updated, 1)
 
 
