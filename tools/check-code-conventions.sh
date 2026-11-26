@@ -25,6 +25,12 @@
 # declared somewhere in the JavaScript of the module or of Magento (MAGENTO_ROOT, or the vendor folder of the module
 # in the development environment; without Magento this part is skipped).
 #
+# Methods that the JavaScript of the module calls on jQuery objects ("$(element).offcanvas()") are declared by jQuery,
+# by the JavaScript libraries that configure-phpstorm.py assigns (templates/phpstorm/js-libraries.xml) or by the module;
+# plugins of bundled libraries that register themselves with a computed name ("$.fn[name] = ...") are declared in
+# templates/phpstorm/stubs/jquery-plugins.js, PhpStorm reports "Unresolved function or method" otherwise (without
+# Magento this check is skipped).
+#
 # JavaScript widgets are returned as the value of "$.widget()", which returns the constructor, not read from the
 # namespace that "$.widget()" creates at runtime ("$.infrangible.x"); PhpStorm reports the namespace as unresolved.
 #
@@ -297,6 +303,83 @@ PYTHON
 if [[ -n "${jsUndeclared}" ]]; then
   echo "${jsUndeclared}"
   message="Declare the properties that are read from JavaScript widget options (or from their elements, for example with a JSDoc @typedef and @property tags), PhpStorm reports them as unresolved otherwise"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# methods called on jQuery objects ("$(element).appendTo('body').offcanvas()") that neither jQuery nor the JavaScript
+# libraries of templates/phpstorm/js-libraries.xml nor the module declare (PhpStorm: "Unresolved function or method"),
+# for example plugins of bundled libraries that register themselves with a computed name ("$.fn[name] = ...")
+jsPlugins=$(python3 - <<'PYTHON'
+import os, pathlib, re
+
+roots = [pathlib.Path(os.environ.get('MAGENTO_ROOT', '')), pathlib.Path('.')]
+magento = next((root for root in roots if str(root) and (root / 'vendor' / 'magento').is_dir()), None)
+libraries = pathlib.Path(os.environ.get('TEMPLATES_DIR', '')) / 'phpstorm' / 'js-libraries.xml'
+
+
+def closing(source: str, start: int) -> int:
+    """Returns the index after the bracket that closes the one at start, skipping strings."""
+    depth = 0
+    index = start
+    while index < len(source):
+        char = source[index]
+        if char in '\'"`':
+            end = index + 1
+            while end < len(source) and source[end] != char:
+                end += 2 if source[end] == '\\' else 1
+            index = end
+        elif char in '([{':
+            depth += 1
+        elif char in ')]}':
+            depth -= 1
+            if depth == 0:
+                return index + 1
+        index += 1
+    return len(source)
+
+
+own = [path for path in sorted(pathlib.Path('src').rglob('*.js'))
+       if 'Andreas Knollmann' in path.read_text(encoding='utf-8', errors='replace')[:1000]]
+calls = []
+for path in own:
+    source = path.read_text(encoding='utf-8', errors='replace')
+    # without comments, with the same length so that line numbers stay
+    code = re.sub(r'/\*.*?\*/|//[^\n]*', lambda match: re.sub(r'[^\n]', ' ', match.group(0)), source, flags=re.S)
+    for match in re.finditer(r'(?<![\w.$])(?:\$|jQuery)\(', code):
+        index = closing(code, match.end() - 1)
+        while True:
+            method = re.compile(r'\s*\.\s*(\w+)\s*\(').match(code, index)
+            if not method:
+                break
+            calls.append((path, code.count('\n', 0, method.start(1)) + 1, method.group(1)))
+            index = closing(code, method.end() - 1)
+
+if magento is not None and libraries.is_file() and calls:
+    declaration = re.compile(r'(?:^|[{,\s])[\'"]?(\w+)[\'"]?\s*:|\.(\w+)\s*=[^=]')
+    declared = set()
+    files = list(own)
+    for library_file in re.findall(r'<file path="([^"]+)"', libraries.read_text(encoding='utf-8')):
+        files.append(magento / library_file if library_file.startswith('vendor/') else
+                     libraries.parent / 'stubs' / pathlib.Path(library_file).name)
+    for path in files:
+        try:
+            source = path.read_text(encoding='utf-8', errors='replace')
+        except OSError:
+            continue
+        declared.update(match.group(1) or match.group(2) for match in declaration.finditer(source))
+    for path, number, name in calls:
+        if name not in declared:
+            print(f'{path}:{number}: .{name}()')
+PYTHON
+)
+if [[ -n "${jsPlugins}" ]]; then
+  echo "${jsPlugins}"
+  message="Declare jQuery plugins that PhpStorm cannot resolve (for example of bundled libraries that register themselves with a computed name) in templates/phpstorm/stubs/jquery-plugins.js of the workflows, PhpStorm reports 'Unresolved function or method' otherwise"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else

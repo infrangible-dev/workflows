@@ -246,7 +246,7 @@ tools/add-return-tags.py ../m2-core/src
 | `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude                 |
 | `stubs/`                 | include path in `.idea/php.xml`                    | classes for PhpStorm only (see below)       |
 | `unchecked-exceptions.xml` | `.idea/php.xml` (`PhpAnalysisConfiguration`)     | exceptions that need no `@throws` tag       |
-| `js-libraries.xml`       | `.idea/libraries/`, `.idea/jsLibraryMappings.xml`  | Magento's RequireJS, jQuery, ... (`lib/web`), scripts of Magento's modules that modules extend (price box, swatch renderer, ...), the Google Maps API (`stubs/google-maps.d.ts`) |
+| `js-libraries.xml`       | `.idea/libraries/`, `.idea/jsLibraryMappings.xml`  | Magento's RequireJS, jQuery, ... (`lib/web`), scripts of Magento's modules that modules extend (price box, swatch renderer, ...), the Google Maps API (`stubs/google-maps.d.ts`), jQuery plugins of bundled libraries (`stubs/jquery-plugins.js`) |
 | `scopes.xml`             | `.idea/scopes/`                                    | scopes the inspections refer to (shared configuration) |
 | `../spelling/words.txt`  | `.idea/dictionaries/magento.xml`                   | words for the spell checker, shared with `tools/check-spelling.sh` |
 
@@ -284,6 +284,10 @@ example attributes of PHPUnit 12. PhpStorm finds them through the include path
 The file is never loaded by PHP. `stubs/google-maps.d.ts` declares the parts of the Google Maps JavaScript API that
 the modules use (Google loads the API at runtime); the JavaScript library `google-maps` of `js-libraries.xml` points to
 it, so PhpStorm does not take `google.maps.Map` for the built-in `Map` of JavaScript.
+`stubs/jquery-plugins.js` declares jQuery plugins of libraries that the modules bundle and that register themselves
+with a computed name (`$.fn[name] = ...`), for example `offcanvas()` of js-offcanvas; the JavaScript library
+`jquery-plugins` points to it. `tools/check-code-conventions.sh` reports calls on jQuery objects that no library
+declares.
 
 
 `schemas/` holds copies of Magento schemas that PhpStorm cannot load, mapped in `project-resources.xml` to

@@ -48,4 +48,12 @@
     <library name="google-maps">
         <file path="../workflows/templates/phpstorm/stubs/google-maps.d.ts" />
     </library>
+    <!--
+     * jQuery plugins of bundled JavaScript libraries that register themselves with a computed name
+     * ("$.fn[name] = ..."), for example offcanvas() of js-offcanvas; PhpStorm cannot resolve them. Relative to the
+     * module like the PHP stubs. Add a plugin there when a module calls one that PhpStorm reports as unresolved.
+    -->
+    <library name="jquery-plugins">
+        <file path="../workflows/templates/phpstorm/stubs/jquery-plugins.js" />
+    </library>
 </libraries>
