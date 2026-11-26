@@ -260,6 +260,14 @@ tools/add-return-tags.py ../m2-core/src
 | `../spelling/words.txt`  | `.idea/dictionaries/magento.xml`                   | words for the spell checker, shared with `tools/check-spelling.sh` |
 | (ESLint)                 | `.idea/eslint.config.mjs`, `.idea/jsLinters/eslint.xml`, `.idea/workspace.xml` | ESLint with the rules of the Magento coding standard, like `tools/check-eslint.sh` (see below) |
 
+PhpStorm excludes all Composer packages in `vendor` again when it opens a project after the installed packages
+changed, also with its Composer synchronization switched off; Magento's LESS variables (`@media-common`) and the
+functions of the JavaScript libraries (`define()`) would then be unresolved. So `configure-phpstorm.py` copies the files
+of the JavaScript libraries in `vendor` and Magento's LESS library (`lib/web/css/source`) into `.phpstorm-magento` of
+this repository (not in git) from a module whose development environment is running (or `MAGENTO_ROOT`), points the
+libraries to the copies and makes the LESS library an additional content root of every module; the Composer packages
+themselves stay excluded. The copies are updated whenever the files in `vendor` differ.
+
 PhpStorm reports the JavaScript of a module with ESLint and the rules of the Magento coding standard, like the check
 `tools/check-eslint.sh`. `configure-phpstorm.py` installs the rules with their npm packages into `.eslint` of this
 repository (not in git) from `vendor/magento/magento-coding-standard` of a module whose development environment is

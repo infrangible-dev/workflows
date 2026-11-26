@@ -19,6 +19,11 @@
     - ../spelling/words.txt: words for the spell checker, shared with tools/check-spelling.sh, for example from class
       names like ReinitableConfigInterface (.idea/dictionaries/magento.xml; the dictionary "project" of the module
       stays)
+    - Magento files: the JavaScript libraries in vendor and the LESS library of Magento are copied into
+      .phpstorm-magento of the workflows (not in git) from a module with a running development environment (or
+      MAGENTO_ROOT); the libraries point to the copies and the LESS library becomes a content root of every module,
+      because PhpStorm excludes all packages in vendor again when it opens a project after the installed packages
+      changed, also with its Composer synchronization switched off
     - .idea/workspace.xml: the Composer synchronization of PhpStorm is switched off (component ComposerSettings); when
       the installed packages changed, it runs when the project is opened and excludes all packages again, also
       vendor/magento/magento2-base with the JavaScript libraries and the LESS library that module-folders.xml indexes
@@ -69,6 +74,12 @@ EMPTY_PROFILE = """<component name="InspectionProjectProfileManager">
 STUBS_INCLUDE_PATH = "$PROJECT_DIR$/../workflows/templates/phpstorm/stubs"
 
 ESLINT_PATH = Path(__file__).resolve().parent.parent / ".eslint"
+
+# copies of the Magento files PhpStorm needs (JavaScript libraries, LESS library), outside of the module, where PhpStorm's
+# Composer handling does not exclude them again; relative to the module like the stubs
+MAGENTO_COPY_PATH = Path(__file__).resolve().parent.parent / ".phpstorm-magento"
+MAGENTO_COPY_URL = "../workflows/.phpstorm-magento"
+LESS_LIBRARY = "vendor/magento/magento2-base/lib/web/css/source"
 
 ESLINT_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
@@ -346,6 +357,68 @@ def js_libraries() -> dict[str, list[str]]:
     }
 
 
+def magento_root(directories: list[Path]) -> Path | None:
+    """MAGENTO_ROOT, or a module whose development environment is running (with the Magento packages in vendor)."""
+    roots = ([Path(os.environ["MAGENTO_ROOT"])] if os.environ.get("MAGENTO_ROOT") else []) + directories
+    for root in roots:
+        if (root / LESS_LIBRARY).is_dir():
+            return root
+    return None
+
+
+def copy_magento_files(directories: list[Path], libraries: dict[str, list[str]], check: bool) -> bool:
+    """Copies the files of the JavaScript libraries in vendor and the LESS library of Magento into MAGENTO_COPY_PATH,
+    where they are not affected by PhpStorm's Composer handling: when the installed packages change, PhpStorm excludes
+    all packages in vendor again the next time it opens the project, also with the synchronization switched off, and
+    then reports Magento's LESS variables (@media-common) and JavaScript functions (define()) as unresolved. Returns
+    whether the copies exist."""
+    root = magento_root(directories)
+    if root is not None and not check:
+        paths = [path for files in libraries.values() for path in files if path.startswith("vendor/")]
+        paths += [str(path.relative_to(root)) for path in sorted((root / LESS_LIBRARY).rglob("*")) if path.is_file()]
+        copied = 0
+        for path in paths:
+            source, target = root / path, MAGENTO_COPY_PATH / path
+            if not source.is_file():
+                continue
+            if target.is_file() and target.read_bytes() == source.read_bytes():
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
+            copied += 1
+        if copied:
+            print(f"Copied {copied} Magento files from {root} into {MAGENTO_COPY_PATH}")
+    exists = (MAGENTO_COPY_PATH / LESS_LIBRARY).is_dir()
+    if not exists:
+        print("No copy of the Magento files for PhpStorm: needs a module with a running development environment (or"
+              " MAGENTO_ROOT); the libraries are read from the vendor folder of the module meanwhile")
+    return exists
+
+
+def library_path(path: str, copied: bool) -> str:
+    """The path of a library file relative to the module: files in vendor are read from the copy, if it exists."""
+    return f"{MAGENTO_COPY_URL}/{path}" if copied and path.startswith("vendor/") else path
+
+
+def apply_content_root(iml: str, url: str) -> str:
+    """Adds a content root after the one of the module, if it is missing."""
+    element = f'<content url="{url}" />'
+    if element in iml or not iml:
+        return iml
+    content = re.search(r'([ \t]*)<content url="file://\$MODULE_DIR\$"\s*(/>|>.*?</content>)\n', iml, re.S)
+    if not content:
+        return iml
+    return iml[:content.end()] + f"{content.group(1)}{element}\n" + iml[content.end():]
+
+
+def remove_nested_excludes(iml: str, exclude: list[str]) -> str:
+    """Removes the exclusions of folders inside excluded folders, for example of the folders beside the LESS library
+    in vendor/magento/magento2-base, which earlier versions of this script excluded instead of the whole package."""
+    for path in exclude:
+        iml = re.sub(r'[ \t]*<excludeFolder url="file://\$MODULE_DIR\$/' + re.escape(path) + r'/[^"]+" />\n', "", iml)
+    return iml
+
+
 def js_library(name: str, files: list[str]) -> str:
     urls = [f"file://$PROJECT_DIR$/{path}" for path in files]
     return (
@@ -560,9 +633,16 @@ def main() -> int:
     entries = entry_points()
     index, exclude = module_folders()
     libraries = js_libraries()
-    index = index + library_folders(libraries, index)
     unchecked = unchecked_exceptions()
     eslint = install_eslint(directories, check)
+    copied = copy_magento_files(directories, libraries, check)
+    if copied:
+        # the Composer packages of the copied files stay excluded, as PhpStorm excludes them anyway
+        exclude = exclude + sorted({"/".join(path.split("/")[:3]) for files in libraries.values() for path in files
+                                    if path.startswith("vendor/")} | {"vendor/magento/magento2-base"})
+        index = [path for path in index if path != LESS_LIBRARY]
+    libraries = {name: [library_path(path, copied) for path in files] for name, files in libraries.items()}
+    index = index + library_folders(libraries, index)
     outdated = False
     schema_problems = False
 
@@ -595,7 +675,11 @@ def main() -> int:
             files[idea / "eslint.config.mjs"] = lambda s, config=eslint_config(directory): config
             files[idea / "jsLinters" / "eslint.xml"] = lambda s: ESLINT_XML
         for iml in sorted(idea.glob("*.iml")):
-            files[iml] = lambda s: apply_folders(s, index, exclude, directory)
+            files[iml] = lambda s: (
+                apply_content_root(remove_nested_excludes(apply_folders(s, index, exclude, directory), exclude),
+                                   f"file://$MODULE_DIR$/{MAGENTO_COPY_URL}/{LESS_LIBRARY}")
+                if copied else apply_folders(s, index, exclude, directory)
+            )
         for schema in uncorrected_schemas(directory, resources):
             print(f"Schema without corrected copy in templates/phpstorm/schemas: {schema}")
             schema_problems = True

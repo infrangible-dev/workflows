@@ -13,8 +13,10 @@
     <index path="generated" />
     <!--
      * Magento's LESS library (UI library): the _module.less of the modules use its variables (@media-common, ...) and
-     * mixins (.lib-form-field(), ...), but PhpStorm's Composer synchronization excludes vendor/magento/magento2-base.
-     * Only the sources of the library are indexed, not the JavaScript and the rest of the package.
+     * mixins (.lib-form-field(), ...), but PhpStorm's Composer handling excludes vendor/magento/magento2-base. Only
+     * used while there is no copy in .phpstorm-magento of the workflows: configure-phpstorm.py copies the library
+     * there and makes it a content root, because PhpStorm excludes the package again whenever the installed packages
+     * changed.
     -->
     <index path="vendor/magento/magento2-base/lib/web/css/source" />
     <!-- compiled configuration, no classes -->
