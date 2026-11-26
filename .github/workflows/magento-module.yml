@@ -1,7 +1,8 @@
 # Checks a Magento 2 module against several Magento and PHP versions and releases it when the checks pass.
 #
 # Checks (on every push and pull request):
-#   - coding standard (PHPCS with the phpcs.xml of the module), with the newest Magento version
+#   - coding standard (PHPCS with the phpcs.xml of the module, ESLint with the rules of the Magento coding standard),
+#     with the newest Magento version
 #   - syntax of PHP 8.1 (Rector), with the newest Magento version
 #   - static analysis (PHPStan with the phpstan.neon of the module and infrangible/phpstan-magento from its
 #     require-dev), with every Magento version
@@ -144,6 +145,14 @@ jobs:
           # templates/spelling/words.txt
           npm install --prefix "${RUNNER_TEMP}/cspell" --no-audit --no-fund "cspell@~10.4.1"
           workflows/tools/check-spelling.sh module "${RUNNER_TEMP}/cspell/node_modules/.bin/cspell"
+
+      - name: JavaScript coding standard
+        if: matrix.phpcs
+        # the ESLint rules of the Magento coding standard, which the Adobe Commerce Marketplace applies besides PHPCS;
+        # only the module's own files, see the script
+        env:
+          ESLINT_CACHE_DIR: ${{ runner.temp }}/eslint
+        run: workflows/tools/check-eslint.sh module "${MAGENTO_ROOT}"
 
       - name: Deprecated code
         if: matrix.phpcs

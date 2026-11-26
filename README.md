@@ -81,6 +81,11 @@ rejects modules that allow fewer PHP versions than the Magento versions they sup
      fix the word, or add a correctly spelled term to `templates/spelling/words.txt`, which
      `tools/configure-phpstorm.py` also writes into the PhpStorm dictionary; locally, install cspell with
      `cosyses Node.js 24.13` and `cosyses CSpell 10.4` (Cosyses 1.157.0 or newer)
+   - JavaScript of the module following the ESLint rules of the Magento coding standard
+     (`magento/magento-coding-standard`, `eslint/eslint.config.mjs`), which the Adobe Commerce Marketplace applies
+     besides PHPCS, through `tools/check-eslint.sh <module> <magento> [--fix]`; only the module's own files with the
+     copyright header, not bundled libraries; warnings fail as well; `--fix` applies the automatic fixes to the
+     module; locally, install Node.js with `cosyses Node.js 24.13`
    - every class, function and constant used by the module comes from a dependency in its `composer.json`, PHP
      extensions (`ext-<name>`) included, checked with
      [ComposerRequireChecker](https://github.com/maglnet/ComposerRequireChecker) through
