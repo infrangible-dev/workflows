@@ -514,7 +514,8 @@ def apply_eslint_properties(workspace: str) -> str:
         return workspace
     properties = {
         "node.js.detected.package.eslint": "true",
-        "node.js.selected.package.eslint": ide_path(str(ESLINT_PATH / "node_modules" / "eslint")),
+        # PhpStorm writes the package as Windows path with backslashes, the interpreter with slashes
+        "node.js.selected.package.eslint": ide_path(str(ESLINT_PATH / "node_modules" / "eslint")).replace("/", "\\"),
         "nodejs_interpreter_path": ide_path(NODE_PATH),
     }
     component = re.search(r'(<component name="PropertiesComponent"><!\[CDATA\[)(.*?)(\]\]></component>)', workspace, re.S)
