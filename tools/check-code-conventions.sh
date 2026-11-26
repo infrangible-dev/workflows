@@ -31,6 +31,10 @@
 # templates/phpstorm/stubs/jquery-plugins.js, PhpStorm reports "Unresolved function or method" otherwise (without
 # Magento this check is skipped).
 #
+# Suppressions of PHPCompatibility ("phpcs:ignore PHPCompatibility...") follow a check whether the function or class
+# exists (function_exists(), class_exists(), PHP_VERSION_ID): the modules support PHP 8.1, a suppression without check
+# hid memory_reset_peak_usage() of PHP 8.2.
+#
 # JavaScript widgets are returned as the value of "$.widget()", which returns the constructor, not read from the
 # namespace that "$.widget()" creates at runtime ("$.infrangible.x"); PhpStorm reports the namespace as unresolved.
 #
@@ -1275,6 +1279,31 @@ sys.exit(1 if failed else 0)
 PY
 then
   message="Document every parameter in the docblocks of the PHPStan rules"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# suppressions of PHPCompatibility without a check whether the function or class exists: they hid
+# memory_reset_peak_usage() (PHP 8.2) in a module that supports PHP 8.1
+compatibilitySuppressions=$(python3 - <<'PYTHON'
+import pathlib, re
+
+for path in sorted(pathlib.Path('src').rglob('*.php')) + sorted(pathlib.Path('src').rglob('*.phtml')):
+    lines = path.read_text(encoding='utf-8', errors='replace').splitlines()
+    for number, line in enumerate(lines, 1):
+        if re.search(r'phpcs:(ignore|disable)[^\n]*PHPCompatibility', line):
+            before = ' '.join(lines[max(0, number - 4):number - 1])
+            if not re.search(r'\b(function_exists|class_exists|method_exists|interface_exists|PHP_VERSION_ID|version_compare)\b', before):
+                print(f'{path}:{number}: {line.strip()}')
+PYTHON
+)
+if [[ -n "${compatibilitySuppressions}" ]]; then
+  echo "${compatibilitySuppressions}"
+  message="Call functions and classes of newer PHP versions only after checking that they exist (function_exists(), class_exists(), PHP_VERSION_ID) before suppressing PHPCompatibility, the modules support PHP 8.1"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else
