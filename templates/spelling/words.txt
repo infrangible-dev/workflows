@@ -25,6 +25,7 @@ computedstyle
 cpot
 cpott
 creditmemo
+crosssell
 custgroup
 dragonmantank
 dtime
