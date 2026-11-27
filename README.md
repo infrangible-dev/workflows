@@ -75,9 +75,11 @@ rejects modules that allow fewer PHP versions than the Magento versions they sup
      `tools/check-php-syntax.sh <module> <magento> [<rector>]`, which also describes how to apply the changes
    - no duplicated code (at least 5 identical lines and 100 tokens, variable names ignored, like the PhpStorm
      inspection "Duplicated code fragment"), checked with [PHPCPD](https://github.com/systemsdk/phpcpd) through
-     `tools/check-duplicated-code.sh <module> [<phpcpd>]`; move duplicated code into a shared method or base class,
-     merge tests that only differ in their data into one test with a data provider; locally, install phpcpd with
-     `cosyses PHPCPD 9.2`
+     `tools/check-duplicated-code.sh <module> [<phpcpd>] [<magento>]`; move duplicated code into a shared method or
+     base class, merge tests that only differ in their data into one test with a data provider; templates (`.phtml`)
+     are also compared with the templates of the required Infrangible modules in the Magento installation
+     (`$MAGENTO_ROOT` by default), from 50 tokens, as PhpStorm does; move the values a template computes into methods
+     of its block; locally, install phpcpd with `cosyses PHPCPD 9.2`
    - correct spelling in code, comments, texts and documentation, like the PhpStorm inspection "Typo", checked with
      [cspell](https://cspell.org) and `templates/spelling/cspell.json` through
      `tools/check-spelling.sh <module> [<cspell>]`; translations (`i18n`), generated and minified files are skipped;
