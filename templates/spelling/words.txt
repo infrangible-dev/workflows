@@ -79,6 +79,7 @@ reinitable
 rijndael
 searchcheck
 sgridcolumn
+showcart
 sitemapindex
 skus
 softwareentwicklung
