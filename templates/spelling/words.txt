@@ -90,6 +90,7 @@ softwareentwicklung
 subline
 superglobal
 tablerate
+tierprice
 timestampdiff
 tinyint
 tocart
