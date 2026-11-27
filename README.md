@@ -43,6 +43,9 @@ rejects modules that allow fewer PHP versions than the Magento versions they sup
      templates) instead of the deprecated escape methods of blocks (`$this->escapeHtml()`, `$block->escapeUrl()`, …)
    - imported classes are written with their short name (`RuntimeException` instead of `\RuntimeException` after
      `use RuntimeException;`), PhpStorm reports the qualifier as unnecessary
+   - LESS variables are defined in the module, in Magento's LESS library or in the LESS of Magento Blank or the admin
+     theme, which every theme builds on; variables that only Luma defines in its module files (`@footer-links-color`)
+     are reported, like PhpStorm reports them as "Cannot find variable"
    - every module requires `infrangible/m2-foundation` in `composer.json`, which presents Infrangible in the Magento
      admin, also when its code does not use it (except m2-foundation itself)
    - admin controllers declare their ACL resource (`const ADMIN_RESOURCE` or `_isAllowed()`) when they extend a base
@@ -273,7 +276,8 @@ tools/add-return-tags.py ../m2-core/src
 PhpStorm excludes all Composer packages in `vendor` again when it opens a project after the installed packages
 changed, also with its Composer synchronization switched off; Magento's LESS variables (`@media-common`) and the
 functions of the JavaScript libraries (`define()`) would then be unresolved. So `configure-phpstorm.py` copies the files
-of the JavaScript libraries in `vendor` and Magento's LESS library (`lib/web/css/source`) into `.phpstorm-magento` of
+of the JavaScript libraries in `vendor`, Magento's LESS library (`lib/web/css/source`) and the LESS of Magento Blank
+and the admin theme (variables like `@minicart-icons-color` or `@icons-admin__font-name`) into `.phpstorm-magento` of
 this repository (not in git) from a module whose development environment is running (or `MAGENTO_ROOT`), points the
 libraries to the copies and makes the copy an additional content root of every module, because PhpStorm only indexes
 library files inside the content roots; the Composer packages themselves stay excluded. The copies are updated whenever the files in `vendor` differ.

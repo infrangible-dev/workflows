@@ -80,6 +80,13 @@ ESLINT_PATH = Path(__file__).resolve().parent.parent / ".eslint"
 MAGENTO_COPY_PATH = Path(__file__).resolve().parent.parent / ".phpstorm-magento"
 MAGENTO_COPY_URL = "../workflows/.phpstorm-magento"
 LESS_LIBRARY = "vendor/magento/magento2-base/lib/web/css/source"
+# the LESS of the themes that every frontend theme (Magento Blank) and the admin build on: they define variables like
+# @minicart-icons-color or @icons-admin__font-name, which modules use and PhpStorm reported as "Cannot find variable"
+LESS_THEMES = [
+    "vendor/magento/theme-frontend-blank/web/css/source",
+    "vendor/magento/theme-frontend-blank/Magento_Theme/web/css/source",
+    "vendor/magento/theme-adminhtml-backend/web/css/source",
+]
 
 ESLINT_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
@@ -367,15 +374,17 @@ def magento_root(directories: list[Path]) -> Path | None:
 
 
 def copy_magento_files(directories: list[Path], libraries: dict[str, list[str]], check: bool) -> bool:
-    """Copies the files of the JavaScript libraries in vendor and the LESS library of Magento into MAGENTO_COPY_PATH,
-    where they are not affected by PhpStorm's Composer handling: when the installed packages change, PhpStorm excludes
-    all packages in vendor again the next time it opens the project, also with the synchronization switched off, and
-    then reports Magento's LESS variables (@media-common) and JavaScript functions (define()) as unresolved. Returns
-    whether the copies exist."""
+    """Copies the files of the JavaScript libraries in vendor, the LESS library of Magento and the LESS of the
+    themes (LESS_THEMES) into MAGENTO_COPY_PATH, where they are not affected by PhpStorm's Composer handling: when
+    the installed packages change, PhpStorm excludes all packages in vendor again the next time it opens the
+    project, also with the synchronization switched off, and then reports Magento's LESS variables (@media-common)
+    and JavaScript functions (define()) as unresolved. Returns whether the copies exist."""
     root = magento_root(directories)
     if root is not None and not check:
         paths = [path for files in libraries.values() for path in files if path.startswith("vendor/")]
         paths += [str(path.relative_to(root)) for path in sorted((root / LESS_LIBRARY).rglob("*")) if path.is_file()]
+        paths += [str(path.relative_to(root)) for theme in LESS_THEMES if (root / theme).is_dir()
+                  for path in sorted((root / theme).rglob("*.less"))]
         copied = 0
         for path in paths:
             source, target = root / path, MAGENTO_COPY_PATH / path

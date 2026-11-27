@@ -1526,6 +1526,59 @@ if [[ -n "${fontFamilies}" ]]; then
   failed=1
 fi
 
+# LESS variables that are defined neither in the module (also as parameter of its mixins) nor in Magento's LESS library or
+# the LESS of Magento Blank and the admin theme, which every theme builds on (PhpStorm: "Cannot find variable"; the
+# PhpStorm configuration indexes the same files, see configure-phpstorm.py), for example variables that only Luma
+# defines in its own module files
+undefinedLessVariables=$(python3 - <<'PYTHON'
+import os, pathlib, re
+AT_RULES = {"media", "import", "font-face", "supports", "keyframes", "charset", "namespace", "page", "plugin",
+            "document", "viewport", "counter-style", "layer", "container", "property"}
+SOURCES = ["vendor/magento/magento2-base/lib/web/css/source", "lib/web/css/source",
+           "vendor/magento/theme-frontend-blank/web/css/source",
+           "vendor/magento/theme-frontend-blank/Magento_Theme/web/css/source",
+           "vendor/magento/theme-adminhtml-backend/web/css/source"]
+
+def strip_comments(text):
+    text = re.sub(r"/\*.*?\*/", lambda match: "\n" * match.group(0).count("\n"), text, flags=re.S)
+    return re.sub(r"(?<!:)//[^\n]*", "", text)
+
+def definitions(text):
+    names = set(re.findall(r"@([\w-]+)\s*:", text))
+    for parameters in re.findall(r"^\s*\.[\w-]+\s*\(([^)]*)\)\s*(?:when[^{]*)?\{", text, flags=re.M):
+        names.update(re.findall(r"@([\w-]+)", parameters))
+    return names
+
+files = [path for path in sorted(pathlib.Path("src").rglob("*.less"))
+         if "phpcs:ignoreFile" not in path.read_text(encoding="utf-8")]
+roots = [pathlib.Path(os.environ.get("MAGENTO_ROOT", "")), pathlib.Path(".")]
+libraries = [root / source for root in roots if str(root) for source in SOURCES if (root / source).is_dir()]
+if files and any(str(library).endswith("lib/web/css/source") for library in libraries):
+    defined = set()
+    for library in libraries:
+        for path in library.rglob("*.less"):
+            defined |= definitions(strip_comments(path.read_text(encoding="utf-8", errors="replace")))
+    texts = {path: strip_comments(path.read_text(encoding="utf-8")) for path in files}
+    for text in texts.values():
+        defined |= definitions(text)
+    for path, text in texts.items():
+        for number, line in enumerate(text.splitlines(), 1):
+            for name in re.findall(r"@\{?([\w-]+)\}?", line):
+                if name not in AT_RULES and name not in defined:
+                    print(f"{path}:{number}: @{name}")
+PYTHON
+)
+if [[ -n "${undefinedLessVariables}" ]]; then
+  echo "${undefinedLessVariables}"
+  message="Use LESS variables of the module, of Magento's LESS library or of Magento Blank and the admin theme; PhpStorm reports variables that only a theme like Luma defines in its module files as 'Cannot find variable'"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
 # XML files point to their schema with a URN (urn:magento:module:Vendor_Module:etc/file.xsd); PhpStorm cannot resolve
 # a relative location like "layout_update.xsd" ("Cannot resolve file"), Magento validates with its schema locator
 if grep -rnE --include='*.xml' 'noNamespaceSchemaLocation="[^u"]' src; then
