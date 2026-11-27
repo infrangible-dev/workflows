@@ -11,7 +11,8 @@
       with corrected copies of Magento schemas in schemas, relative to the module like the stubs
     - entry-points.xml: class patterns the inspection "Unused declaration" treats as used (component
       PhpEntryPointsManager in .idea/misc.xml)
-    - module-folders.xml: folders that are indexed or excluded (.idea/<module>.iml)
+    - module-folders.xml: folders that are indexed or excluded (.idea/<module>.iml), and the namespace prefix of the
+      source folders from the PSR-4 autoload of composer.json
     - unchecked-exceptions.xml: exceptions that need no @throws tag (.idea/php.xml, merged with existing ones)
     - js-libraries.xml: JavaScript libraries (.idea/libraries/<name>.xml), assigned to the project
       (.idea/jsLibraryMappings.xml, merged with libraries assigned there already)
@@ -425,6 +426,39 @@ def apply_content_root(iml: str, url: str, replaced: str) -> str:
     return iml[:content.end()] + f"{content.group(1)}{element}\n" + iml[content.end():]
 
 
+def psr4_prefixes(module: Path) -> dict[str, str]:
+    """The PSR-4 namespace prefixes of the module by folder, from the autoload section of its composer.json."""
+    try:
+        autoload = json.loads((module / "composer.json").read_text(encoding="utf-8")).get("autoload", {})
+    except (OSError, ValueError):
+        return {}
+    prefixes = {}
+    for prefix, folders in autoload.get("psr-4", {}).items():
+        for folder in folders if isinstance(folders, list) else [folders]:
+            if isinstance(folder, str) and folder.strip("/") != "":
+                prefixes[folder.strip("/")] = prefix
+    return prefixes
+
+
+def apply_source_prefixes(iml: str, module: Path) -> str:
+    """Sets the namespace prefix of the source folders to the PSR-4 prefix of composer.json, or adds the source folder
+    with it (PhpStorm: "Namespace name doesn't match the PSR-0/PSR-4 project structure" if the prefix is wrong, for
+    example in the settings copied from another module)."""
+    if not iml:
+        return iml
+    for folder, prefix in psr4_prefixes(module).items():
+        url = f"file://$MODULE_DIR$/{folder}"
+        element = f'<sourceFolder url="{url}" isTestSource="false" packagePrefix="{prefix}" />'
+        existing = re.search(r'<sourceFolder url="' + re.escape(url) + r'"[^>]*/>', iml)
+        if existing:
+            iml = iml.replace(existing.group(0), element)
+            continue
+        content = re.search(r'([ \t]*)<content url="file://\$MODULE_DIR\$"\s*>\n', iml)
+        if content:
+            iml = iml[:content.end()] + f"{content.group(1)}  {element}\n" + iml[content.end():]
+    return iml
+
+
 def remove_nested_excludes(iml: str, exclude: list[str]) -> str:
     """Removes the exclusions of folders inside excluded folders, for example of the folders beside the LESS library
     in vendor/magento/magento2-base, which earlier versions of this script excluded instead of the whole package."""
@@ -703,11 +737,12 @@ def main() -> int:
             files[idea / "eslint.config.mjs"] = lambda s, config=eslint_config(directory): config
             files[idea / "jsLinters" / "eslint.xml"] = lambda s: ESLINT_XML
         for iml in sorted(idea.glob("*.iml")):
-            files[iml] = lambda s: (
+            files[iml] = lambda s: apply_source_prefixes(
                 apply_content_root(remove_nested_excludes(apply_folders(s, index, exclude, directory), exclude),
                                    f"file://$MODULE_DIR$/{MAGENTO_COPY_URL}",
                                    f"file://$MODULE_DIR$/{MAGENTO_COPY_URL}/{LESS_LIBRARY}")
-                if copied else apply_folders(s, index, exclude, directory)
+                if copied else apply_folders(s, index, exclude, directory),
+                directory
             )
         for schema in uncorrected_schemas(directory, resources):
             print(f"Schema without corrected copy in templates/phpstorm/schemas: {schema}")
