@@ -150,3 +150,7 @@ wuhlheide
 mitsaras
 pkgd
 vasileios
+
+# Names of bundled fonts and of former vendors of the modules
+reenie
+tofex
