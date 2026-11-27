@@ -265,7 +265,7 @@ tools/add-return-tags.py ../m2-core/src
 | `project-resources.xml`  | `.idea/misc.xml` (component `ProjectResources`)    | catalog of the `urn:magento:...` schemas    |
 | `schemas/`               | locations in the schema catalog                    | corrected copies of Magento schemas (see below) |
 | `entry-points.xml`       | `.idea/misc.xml` (`PhpEntryPointsManager`)         | `\Infrangible\*` classes are not unused     |
-| `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude                 |
+| `module-folders.xml`     | `.idea/<module>.iml`                               | folders to index or exclude; the namespace prefix of the source folders comes from the PSR-4 autoload of composer.json |
 | `stubs/`                 | include path in `.idea/php.xml`                    | classes for PhpStorm only (see below)       |
 | `unchecked-exceptions.xml` | `.idea/php.xml` (`PhpAnalysisConfiguration`)     | exceptions that need no `@throws` tag       |
 | `js-libraries.xml`       | `.idea/libraries/`, `.idea/jsLibraryMappings.xml`  | Magento's RequireJS, jQuery, ... (`lib/web`), scripts of Magento's modules that modules extend (price box, swatch renderer, ...), the Google Maps API (`stubs/google-maps.d.ts`), jQuery plugins of bundled libraries (`stubs/jquery-plugins.js`) |
