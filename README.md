@@ -156,7 +156,17 @@ jobs:
 ```
 
 The matrix can be changed with the input `matrix` (JSON list of objects with `magento`, `php` and optionally
-`phpcs`).
+`phpcs`). A module that supports fewer versions, for example one that fixes a bug of newer Magento versions only, keeps
+the shared `ci.yml` and lists its versions in `.github/ci-matrix.json` instead, in the same format; the job "Versions"
+reads it and it replaces the matrix:
+
+```json
+[
+    {"magento": "2.4.8.*", "php": "8.3"},
+    {"magento": "2.4.8.*", "php": "8.4"},
+    {"magento": "2.4.9.*", "php": "8.5", "phpcs": true}
+]
+```
 
 The module needs `phpcs.xml`, `phpstan.neon` and `phpunit.xml` in its root directory, and the PHPStan and PHPUnit
 configuration have to load the Magento installation from `MAGENTO_ROOT` (see `templates/magento-module`), and

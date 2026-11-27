@@ -36,7 +36,9 @@ on:
   workflow_call:
     inputs:
       matrix:
-        description: JSON list of Magento and PHP versions; the entry with "phpcs" set also runs the coding standard
+        description: >-
+          JSON list of Magento and PHP versions; the entry with "phpcs" set also runs the coding standard. A module
+          that supports fewer versions lists its own in .github/ci-matrix.json, which replaces this list
         type: string
         default: >-
           [
@@ -52,13 +54,41 @@ on:
         default: https://mirror.mage-os.org/
 
 jobs:
+  versions:
+    name: Versions
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Check out module
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+          path: module
+
+      # the versions of the module's .github/ci-matrix.json, for example for a module that fixes a bug of newer Magento
+      # versions only, else the versions of the input
+      - name: Read versions
+        id: matrix
+        env:
+          DEFAULT_MATRIX: ${{ inputs.matrix }}
+        run: |
+          if [[ -f module/.github/ci-matrix.json ]]; then
+            matrix=$(jq -c . module/.github/ci-matrix.json)
+          else
+            matrix=$(jq -c . <<< "${DEFAULT_MATRIX}")
+          fi
+          echo "Versions: ${matrix}"
+          echo "matrix=${matrix}" >> "${GITHUB_OUTPUT}"
+
   checks:
     name: Magento ${{ matrix.magento }} / PHP ${{ matrix.php }}
+    needs: versions
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.matrix) }}
+        include: ${{ fromJSON(needs.versions.outputs.matrix) }}
     env:
       MAGENTO_ROOT: ${{ github.workspace }}/magento
     steps:
