@@ -31,6 +31,11 @@
 # templates/phpstorm/stubs/jquery-plugins.js, PhpStorm reports "Unresolved function or method" otherwise (without
 # Magento this check is skipped).
 #
+# The result of a method that exists only in some Magento versions (checked with method_exists()) is checked with
+# instanceof under "@noinspection PhpConditionAlreadyCheckedInspection <reason>": PhpStorm resolves the method in the
+# Magento version of the IDE and reports the check as "Condition is always 'true'", PHPStan needs it for the versions
+# without the method.
+#
 # Suppressions of PHPCompatibility ("phpcs:ignore PHPCompatibility...") follow a check whether the function or class
 # exists (function_exists(), class_exists(), PHP_VERSION_ID): the modules support PHP 8.1, a suppression without check
 # hid memory_reset_peak_usage() of PHP 8.2.
@@ -1442,6 +1447,45 @@ PYTHON
 if [[ -n "${compatibilitySuppressions}" ]]; then
   echo "${compatibilitySuppressions}"
   message="Call functions and classes of newer PHP versions only after checking that they exist (function_exists(), class_exists(), PHP_VERSION_ID) before suppressing PHPCompatibility, the modules support PHP 8.1"
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::error::${message}"
+  else
+    echo "${message}" >&2
+  fi
+  failed=1
+fi
+
+# instanceof checks of the result of a method that only exists in some Magento versions (checked with method_exists()):
+# PhpStorm resolves the method in the Magento version of the IDE and reports the check as "Condition is always 'true'",
+# PHPStan with the older versions needs it; the check is suppressed with a reason
+versionBranchChecks=$(python3 - <<'PYTHON'
+import pathlib, re
+
+for path in sorted(pathlib.Path('src').rglob('*.php')) + sorted(pathlib.Path('src').rglob('*.phtml')):
+    lines = path.read_text(encoding='utf-8', errors='replace').splitlines()
+    for number, line in enumerate(lines, 1):
+        check = re.search(r"method_exists\(\s*(\$\w+)\s*,\s*'(\w+)'\s*\)", line)
+        if not check:
+            continue
+        objectName, methodName = check.group(1), check.group(2)
+        following = lines[number:number + 15]
+        for offset, assignment in enumerate(following):
+            result = re.search(r'(\$\w+)\s*=\s*' + re.escape(objectName) + r'->' + methodName + r'\(', assignment)
+            if not result:
+                continue
+            for checkOffset in range(offset + 1, min(offset + 12, len(following))):
+                if re.search(re.escape(result.group(1)) + r'\s+instanceof\b', following[checkOffset]):
+                    checkNumber = number + checkOffset + 1
+                    before = ' '.join(lines[max(0, checkNumber - 6):checkNumber - 1])
+                    if 'PhpConditionAlreadyCheckedInspection' not in before:
+                        print(f'{path}:{checkNumber}: {following[checkOffset].strip()}')
+                    break
+            break
+PYTHON
+)
+if [[ -n "${versionBranchChecks}" ]]; then
+  echo "${versionBranchChecks}"
+  message="Suppress the instanceof check of a method result that exists only in some Magento versions with \"@noinspection PhpConditionAlreadyCheckedInspection <reason>\": PhpStorm resolves the method in the version of the IDE and reports the check as always true, PHPStan needs it for the other versions"
   if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
     echo "::error::${message}"
   else

@@ -48,6 +48,9 @@ rejects modules that allow fewer PHP versions than the Magento versions they sup
      are reported, like PhpStorm reports them as "Cannot find variable"
    - every module requires `infrangible/m2-foundation` in `composer.json`, which presents Infrangible in the Magento
      admin, also when its code does not use it (except m2-foundation itself)
+   - the result of a method that exists only in some Magento versions (checked with `method_exists()`) is checked with
+     `instanceof` under `@noinspection PhpConditionAlreadyCheckedInspection <reason>`: PhpStorm resolves the method
+     in the Magento version of the IDE and reports the check as always true, PHPStan needs it for the other versions
    - admin controllers declare their ACL resource (`const ADMIN_RESOURCE` or `_isAllowed()`) when they extend a base
      class that only checks `Magento_Backend::admin` (Magento's `Backend\App\Action`, the `Json` and `Ajax`
      controllers of m2-core), which every admin user has; `Magento_Backend::admin` itself is only declared on purpose
